@@ -1,0 +1,19 @@
+{
+  "name": "Sleep Log",
+  "short_name": "Sleep",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1117",
+  "theme_color": "#0e1117",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "睡眠 開始/終了", "short_name": "睡眠", "url": "./?a=sleep" },
+    { "name": "パワーナップ 開始/終了", "short_name": "PN", "url": "./?a=pn" }
+  ]
+}

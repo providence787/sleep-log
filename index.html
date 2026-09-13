@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1117">
+<title>Sleep Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;
+      --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);
+     font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+     padding:calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 20px)}
+header{display:flex;justify-content:space-between;align-items:baseline;padding:6px 2px 12px}
+h1{font-size:16px;margin:0;letter-spacing:.04em}
+.sub{color:var(--sub);font-size:12px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
+button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;background:#2a3040}
+.big{width:100%;font-size:21px;font-weight:700;padding:28px 14px;margin-bottom:10px;line-height:1.3}
+.sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}.stop{background:var(--stop)}
+.timer{font-size:46px;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;font-weight:700}
+.center{text-align:center}.mt{margin-top:10px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.small{font-size:13px;padding:9px}
+.hist{display:flex;justify-content:space-between;align-items:center;
+      padding:9px 2px;border-bottom:1px solid #242a36;font-size:14px}
+.hist:last-child{border:0}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:8px}
+.t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--stop);display:inline-block;margin-left:6px}
+.sync{color:var(--sub);font-size:12px;text-align:center}
+input{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3purple;
+      border:1px solid #2c3342;background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
+details summary{color:var(--sub);font-size:13px;cursor:pointer;padding:4px}
+dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;width:88%;max-width:340px}
+label{font-size:12px;color:var(--sub)}
+</style>
+</head>
+<body>
+<header>
+  <h1>SLEEP LOG</h1>
+  <div class="sub" id="today"></div>
+</header>
+
+<div class="card" id="main"></div>
+
+<div class="card">
+  <div class="sub" style="margin-bottom:6px">履歴（直近7日）</div>
+  <div id="hist"></div>
+</div>
+
+<div class="sync" id="syncmsg"></div>
+<div class="row mt">
+  <button class="small" id="btnSync">スプレッドシートへ同期</button>
+</div>
+
+<details class="mt">
+  <summary>設定</summary>
+  <div class="card mt">
+    <label>GAS ウェブアプリ URL（/exec）</label>
+    <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <label>トークン</label>
+    <input id="cfgToken" placeholder="GAS 側と同じ文字列">
+    <button class="small" id="btnSave">保存</button>
+  </div>
+</details>
+
+<dialog id="dlg">
+  <div style="padding:16px">
+    <div id="dlgTitle" style="font-weight:700;margin-bottom:12px"></div>
+    <div class="sub">開始 <span id="dlgStart"></span></div>
+    <div class="row mt">
+      <button class="small" data-adj="s-30">−30</button>
+      <button class="small" data-adj="s-5">−5</button>
+      <button class="small" data-adj="s5">＋5</button>
+      <button class="small" data-adj="s30">＋30</button>
+    </div>
+    <div class="sub mt">終了 <span id="dlgEnd"></span></div>
+    <div class="row mt">
+      <button class="small" data-adj="e-30">−30</button>
+      <button class="small" data-adj="e-5">−5</button>
+      <button class="small" data-adj="e5">＋5</button>
+      <button class="small" data-adj="e30">＋30</button>
+    </div>
+    <div class="center mt" id="dlgDur" style="font-size:20px;font-weight:700"></div>
+    <div class="row mt">
+      <button class="small stop" id="dlgDel">削除</button>
+      <button class="small" id="dlgClose">閉じる</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const KEY='sleeplog.v1';
+const init=()=>({active:null,records:[],settings:{url:'',token:''}});
+let db; try{db=JSON.parse(localStorage.getItem(KEY))||init()}catch(e){db=init()}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const pad=n=>String(n).padStart(2,'0');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const PN_LIMIT=3;
+
+// 睡眠は「就寝した日」を基準にしたいので 12 時間前にずらして日付を決める
+function logicalDate(type,iso){
+  const d=new Date(iso);
+  if(type==='sleep') d.setHours(d.getHours()-12);
+  return dkey(d);
+}
+const minutes=r=>Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000));
+const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
+function pnCountToday(){
+  const k=dkey(new Date());
+  return db.records.filter(r=>r.type==='pn'&&!r.deleted&&r.dateKey===k).length;
+}
+
+function start(type){
+  if(db.active) return;
+  db.active={id:uid(),type,start:new Date().toISOString()};
+  save();render();
+}
+function stop(){
+  if(!db.active) return;
+  const a=db.active, end=new Date().toISOString();
+  const rec={id:a.id,type:a.type,start:a.start,end,
+             dateKey:logicalDate(a.type,a.start),synced:false};
+  if(minutes(rec)<1 && !confirm('1分未満です。記録しますか？')){db.active=null;save();render();return;}
+  if(rec.type==='pn'){
+    rec.pnIndex=db.records.filter(r=>r.type==='pn'&&!r.deleted&&r.dateKey===rec.dateKey).length+1;
+  }
+  db.records.push(rec);db.active=null;save();render();
+  toast(`${rec.type==='pn'?'PN':'睡眠'} ${durText(minutes(rec))} を記録`);
+  sync(true);
+}
+
+function render(){
+  const m=document.getElementById('main');
+  const pn=pnCountToday();
+  document.getElementById('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
+  if(db.active){
+    const a=db.active;
+    m.innerHTML=`<div class="center sub">${a.type==='pn'?'パワーナップ':'睡眠'}中　開始 ${hhmm(new Date(a.start))}</div>
+      <div class="timer" id="tmr">00:00:00</div>
+      <button class="big stop" id="btnStop">${a.type==='pn'?'起きた（PN終了）':'起きた（睡眠終了）'}</button>
+      <div class="row"><button class="small" id="btnCancel">開始を取り消す</button></div>`;
+    document.getElementById('btnStop').onclick=stop;
+    document.getElementById('btnCancel').onclick=()=>{
+      if(confirm('この計測を破棄しますか？')){db.active=null;save();render();}};
+    tick();
+  }else{
+    const last=[...db.records].filter(r=>!r.deleted).pop();
+    m.innerHTML=`<button class="big sleep" id="bS">😴 睡眠を開始</button>
+      <button class="big pn" id="bP">⚡ パワーナップ開始${pn>=PN_LIMIT?'（本日上限）':`（残り${PN_LIMIT-pn}）`}</button>
+      <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(minutes(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>`;
+    document.getElementById('bS').onclick=()=>start('sleep');
+    document.getElementById('bP').onclick=()=>{
+      if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return;
+      start('pn');};
+  }
+  renderHist();
+  const p=db.records.filter(r=>!r.synced).length;
+  document.getElementById('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
+}
+
+function renderHist(){
+  const keys=[...new Set(db.records.filter(r=>!r.deleted).map(r=>r.dateKey))].sort().reverse().slice(0,7);
+  const h=document.getElementById('hist');
+  h.innerHTML=keys.length?'':'<div class="sub">—</div>';
+  keys.forEach(k=>{
+    const rs=db.records.filter(r=>r.dateKey===k&&!r.deleted)
+      .sort((a,b)=>new Date(a.start)-new Date(b.start));
+    const tot=rs.reduce((s,r)=>s+minutes(r),0);
+    h.insertAdjacentHTML('beforeend',
+      `<div class="hist" style="border-bottom:0;padding-bottom:2px">
+         <b>${k.slice(5)}</b><span class="sub">計 ${durText(tot)}</span></div>`);
+    rs.forEach(r=>{
+      const el=document.createElement('div');
+      el.className='hist';
+      el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+(r.pnIndex||''):'睡眠'}</span>
+        ${hhmm(new Date(r.start))}→${hhmm(new Date(r.end))}</span>
+        <span>${durText(minutes(r))}${r.synced?'':'<span class="dot"></span>'}</span>`;
+      el.onclick=()=>openEdit(r.id);
+      h.appendChild(el);
+    });
+  });
+}
+
+let cur=null;
+function openEdit(id){
+  cur=db.records.find(r=>r.id===id);
+  document.getElementById('dlgTitle').textContent=(cur.type==='pn'?'PN':'睡眠')+' を修正';
+  drawDlg();document.getElementById('dlg').showModal();
+}
+function drawDlg(){
+  document.getElementById('dlgStart').textContent=new Date(cur.start).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dlgEnd').textContent=new Date(cur.end).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dlgDur').textContent=durText(minutes(cur));
+}
+document.querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{
+  const v=b.dataset.adj, f=v[0], n=parseInt(v.slice(1),10);
+  const t=new Date(f==='s'?cur.start:cur.end); t.setMinutes(t.getMinutes()+n);
+  if(f==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  else cur.end=t.toISOString();
+  cur.synced=false;save();drawDlg();renderHist();
+});
+document.getElementById('dlgDel').onclick=()=>{
+  if(!confirm('この記録を削除しますか？'))return;
+  cur.deleted=true;cur.synced=false;save();document.getElementById('dlg').close();render();sync(true);
+};
+document.getElementById('dlgClose').onclick=()=>{document.getElementById('dlg').close();render();sync(true);};
+
+function tick(){
+  if(!db.active)return;
+  const el=document.getElementById('tmr'); if(!el)return;
+  const s=Math.floor((Date.now()-new Date(db.active.start))/1000);
+  el.textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+}
+setInterval(tick,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+
+function toast(t){document.getElementById('syncmsg').textContent=t;}
+
+async function sync(silent){
+  const {url,token}=db.settings;
+  const pend=db.records.filter(r=>!r.synced);
+  if(!url||!pend.length){if(!silent)toast(url?'送信するものはありません':'設定に GAS URL を入れてください');return;}
+  if(!silent)toast('同期中…');
+  try{
+    const res=await fetch(url,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token,records:pend.map(r=>({
+        id:r.id,type:r.type,dateKey:r.dateKey,start:r.start,end:r.end,
+        minutes:minutes(r),pnIndex:r.pnIndex||'',deleted:!!r.deleted}))})});
+    const j=await res.json();
+    if(!j.ok) throw new Error(j.error||'NG');
+    j.saved.forEach(id=>{const r=db.records.find(x=>x.id===id); if(r)r.synced=true;});
+    save();render();toast('同期しました');
+  }catch(e){toast('同期失敗（未同期のまま保持）');}
+}
+document.getElementById('btnSync').onclick=()=>sync(false);
+document.getElementById('btnSave').onclick=()=>{
+  db.settings.url=document.getElementById('cfgUrl').value.trim();
+  db.settings.token=document.getElementById('cfgToken').value.trim();
+  save();toast('設定を保存しました');
+};
+document.getElementById('cfgUrl').value=db.settings.url;
+document.getElementById('cfgToken').value=db.settings.token;
+
+// ホーム画面ショートカットからの起動（?a=sleep / ?a=pn）
+const a=new URLSearchParams(location.search).get('a');
+if(a&&!db.active&&(a==='sleep'||a==='pn')) start(a);
+history.replaceState(null,'',location.pathname);
+
+render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+window.addEventListener('online',()=>sync(true));
+</script>
+</body>
+</html>
