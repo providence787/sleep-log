@@ -15,5 +15,6 @@
   "shortcuts": [
     { "name": "睡眠 開始/終了", "short_name": "睡眠", "url": "./?a=sleep" },
     { "name": "パワーナップ 開始/終了", "short_name": "PN", "url": "./?a=pn" }
+	{ "name": "アンガーログ", "short_name": "怒", "url": "./?a=anger" }
   ]
 }

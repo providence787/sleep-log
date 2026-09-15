@@ -8,35 +8,51 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <style>
-:root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;
-      --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950}
+:root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;--line:#242a36;
+      --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950;--ang:#a06cd5}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--fg);
      font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
-     padding:calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 20px)}
+     padding:calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 24px);
+     max-width:560px;margin:0 auto}
 header{display:flex;justify-content:space-between;align-items:baseline;padding:6px 2px 12px}
 h1{font-size:16px;margin:0;letter-spacing:.04em}
 .sub{color:var(--sub);font-size:12px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
 button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;background:#2a3040}
-.big{width:100%;font-size:21px;font-weight:700;padding:28px 14px;margin-bottom:10px;line-height:1.3}
-.sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}.stop{background:var(--stop)}
-.timer{font-size:46px;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;font-weight:700}
+.big{width:100%;font-size:21px;font-weight:700;padding:26px 14px;margin-bottom:10px;line-height:1.3}
+.sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}
+.stop{background:var(--stop)}.ang{background:var(--ang)}
+.timer{font-size:44px;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;font-weight:700}
 .center{text-align:center}.mt{margin-top:10px}
-.row{display:flex;gap:8px}.row>*{flex:1}
+.row{display:flex;gap:6px}.row>*{flex:1}
 .small{font-size:13px;padding:9px}
+.adj{font-size:13px;padding:10px 0;background:#2a3040;touch-action:none;user-select:none}
 .hist{display:flex;justify-content:space-between;align-items:center;
-      padding:9px 2px;border-bottom:1px solid #242a36;font-size:14px}
-.hist:last-child{border:0}
-.tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:8px}
+      padding:9px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;white-space:nowrap}
 .t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
+.t-ang{background:#3a2550;color:#d9bcff}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--stop);display:inline-block;margin-left:6px}
-.sync{color:var(--sub);font-size:12px;text-align:center}
-input{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3purple;
-      border:1px solid #2c3342;background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
-details summary{color:var(--sub);font-size:13px;cursor:pointer;padding:4px}
-dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;width:88%;max-width:340px}
-label{font-size:12px;color:var(--sub)}
+.sync{color:var(--sub);font-size:12px;text-align:center;min-height:16px}
+input{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
+      background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
+input[type=time]{width:auto;margin:0;padding:7px 9px}
+details summary{color:var(--sub);font-size:13px;padding:4px}
+dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;width:92%;max-width:420px;padding:0}
+dialog::backdrop{background:#000a}
+.pad{padding:16px}
+label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#222836;border:1px solid #2f3purple;border:1px solid #2f3646;color:#c7cedd;
+      border-radius:999px;padding:8px 12px;font-size:13px}
+.chip.on{background:#2f4fd8;border-color:#5b7cfa;color:#fff}
+.chip.on.a{background:#6b3fa8;border-color:#a06cd5}
+.mini{font-size:12px;color:var(--sub)}
+.lvbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+       background:#222836;border:1px solid #2f3646;margin-bottom:6px;padding:13px}
+.lvbtn.on{background:#6b3fa8;border-color:#a06cd5}
+.lvic{font-size:19px;width:26px;text-align:center}
 </style>
 </head>
 <body>
@@ -48,213 +64,390 @@ label{font-size:12px;color:var(--sub)}
 <div class="card" id="main"></div>
 
 <div class="card">
-  <div class="sub" style="margin-bottom:6px">履歴（直近7日）</div>
+  <div class="row" style="align-items:center">
+    <div class="sub" id="angSum" style="flex:2"></div>
+    <button class="small ang" id="btnAng" style="flex:1">怒りを記録</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sub" style="margin-bottom:6px">履歴（直近7日・タップで修正）</div>
   <div id="hist"></div>
 </div>
 
 <div class="sync" id="syncmsg"></div>
-<div class="row mt">
-  <button class="small" id="btnSync">スプレッドシートへ同期</button>
-</div>
+<button class="small mt" id="btnSync" style="width:100%">同期（スプレッドシート）</button>
 
 <details class="mt">
   <summary>設定</summary>
   <div class="card mt">
     <label>GAS ウェブアプリ URL（/exec）</label>
-    <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <input id="cfgUrl" placeholder="https://script.google.com/macros/s/AKfycbzMzYjfvuHklMNup2e9O-0A42os4p80fD3noJxpfEO_ziOyDM6MKUgjRZDV3XuC3Mri/exec">
     <label>トークン</label>
-    <input id="cfgToken" placeholder="GAS 側と同じ文字列">
+    <input id="sleep-well-live-well">
     <button class="small" id="btnSave">保存</button>
   </div>
 </details>
 
-<dialog id="dlg">
-  <div style="padding:16px">
-    <div id="dlgTitle" style="font-weight:700;margin-bottom:12px"></div>
-    <div class="sub">開始 <span id="dlgStart"></span></div>
-    <div class="row mt">
-      <button class="small" data-adj="s-30">−30</button>
-      <button class="small" data-adj="s-5">−5</button>
-      <button class="small" data-adj="s5">＋5</button>
-      <button class="small" data-adj="s30">＋30</button>
+<!-- 睡眠/PN 編集 -->
+<dialog id="dlg"><div class="pad">
+  <div id="dlgTitle" style="font-weight:700"></div>
+  <div class="center mt" id="dlgDur" style="font-size:24px;font-weight:700"></div>
+
+  <label>開始 <span id="dlgStartT" style="color:var(--fg);font-size:14px"></span></label>
+  <div class="row"><button class="adj" data-f="s" data-n="-60">−60</button>
+    <button class="adj" data-f="s" data-n="-10">−10</button>
+    <button class="adj" data-f="s" data-n="-1">−1</button>
+    <button class="adj" data-f="s" data-n="1">＋1</button>
+    <button class="adj" data-f="s" data-n="10">＋10</button>
+    <button class="adj" data-f="s" data-n="60">＋60</button></div>
+
+  <label>終了 <span id="dlgEndT" style="color:var(--fg);font-size:14px"></span></label>
+  <div class="row"><button class="adj" data-f="e" data-n="-60">−60</button>
+    <button class="adj" data-f="e" data-n="-10">−10</button>
+    <button class="adj" data-f="e" data-n="-1">−1</button>
+    <button class="adj" data-f="e" data-n="1">＋1</button>
+    <button class="adj" data-f="e" data-n="10">＋10</button>
+    <button class="adj" data-f="e" data-n="60">＋60</button></div>
+
+  <details class="mt"><summary>時刻を直接入力</summary>
+    <div class="row mt" style="align-items:center">
+      <span class="mini">開始</span><input type="time" id="inS">
+      <span class="mini">終了</span><input type="time" id="inE">
     </div>
-    <div class="sub mt">終了 <span id="dlgEnd"></span></div>
-    <div class="row mt">
-      <button class="small" data-adj="e-30">−30</button>
-      <button class="small" data-adj="e-5">−5</button>
-      <button class="small" data-adj="e5">＋5</button>
-      <button class="small" data-adj="e30">＋30</button>
-    </div>
-    <div class="center mt" id="dlgDur" style="font-size:20px;font-weight:700"></div>
-    <div class="row mt">
-      <button class="small stop" id="dlgDel">削除</button>
-      <button class="small" id="dlgClose">閉じる</button>
-    </div>
-  </div>
-</dialog>
+  </details>
+
+  <label>メモ</label>
+  <div class="chips" id="dlgTags"></div>
+  <input id="dlgNote" class="mt" placeholder="自由メモ（任意）">
+
+  <div class="row mt"><button class="small stop" id="dlgDel">削除</button>
+    <button class="small" id="dlgClose" style="flex:2">閉じる</button></div>
+</div></dialog>
+
+<!-- アンガーログ -->
+<dialog id="adlg"><div class="pad">
+  <div style="font-weight:700">アンガーログ <span class="mini" id="aTime"></span></div>
+  <label>どうなった</label>
+  <div id="aLv"></div>
+  <label>相手</label><div class="chips" id="aWho"></div>
+  <label>きっかけ（複数可）</label><div class="chips" id="aTrig"></div>
+  <input id="aNote" class="mt" placeholder="自由メモ（任意）">
+  <div class="row mt"><button class="small stop" id="aDel">削除</button>
+    <button class="small" id="aClose" style="flex:2">閉じる</button></div>
+</div></dialog>
 
 <script>
-const KEY='sleeplog.v1';
-const init=()=>({active:null,records:[],settings:{url:'',token:''}});
-let db; try{db=JSON.parse(localStorage.getItem(KEY))||init()}catch(e){db=init()}
+/* ===== ここを好きに編集できます ===== */
+const TAGS=[
+  {k:'sex',   icon:'❤️',label:'性交'},
+  {k:'wake2', icon:'◎', label:'寝起き◎', group:'wake'},
+  {k:'wake1', icon:'○', label:'寝起き○', group:'wake'},
+  {k:'wake0', icon:'△', label:'寝起き△', group:'wake'},
+  {k:'awake', icon:'☾', label:'中途覚醒'},
+  {k:'alc',   icon:'🍺',label:'飲酒'},
+  {k:'sick',  icon:'🤒',label:'体調不良'},
+  {k:'late',  icon:'📱',label:'夜更かし'},
+  {k:'dream', icon:'💭',label:'夢'},
+];
+const ANGER=[
+  {lv:0,icon:'🌱',label:'気づいて流せた'},
+  {lv:1,icon:'😶',label:'不機嫌な態度・無言'},
+  {lv:2,icon:'🗯️',label:'嫌味・きつい言葉'},
+  {lv:3,icon:'📢',label:'大きな声・怒鳴った'},
+  {lv:4,icon:'💥',label:'物に当たった'},
+  {lv:5,icon:'✋',label:'手が出た'},
+];
+const WHO=['子','配偶者','自分','仕事','その他'];
+const TRIG=['寝不足','疲労','空腹','時間に追われた','散らかり','ぐずり・反抗','言うことを聞かない','スマホ','仕事'];
+const PN_LIMIT=3;
+const DEFAULT_URL='';     // 埋め込む場合はここに /exec の URL
+const DEFAULT_TOKEN='';   // 埋め込む場合はここにトークン
+/* ================================== */
+
+const KEY='sleeplog.v2';
+const blank=()=>({items:[],settings:{url:'',token:''}});
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY))||null}catch(e){db=null}
+if(!db){ // v1 からの移行
+  db=blank();
+  try{
+    const o=JSON.parse(localStorage.getItem('sleeplog.v1'));
+    if(o){
+      db.settings=o.settings||db.settings;
+      (o.records||[]).forEach(r=>db.items.push({id:r.id,kind:'sleep',type:r.type,
+        start:r.start,end:r.end,dateKey:r.dateKey,tags:[],note:'',
+        deleted:!!r.deleted,updatedAt:r.end||new Date().toISOString(),synced:false}));
+    }
+  }catch(e){}
+}
+if(!db.settings) db.settings={url:'',token:''};
+if(!db.settings.url)   db.settings.url=DEFAULT_URL;
+if(!db.settings.token) db.settings.token=DEFAULT_TOKEN;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const now=()=>new Date().toISOString();
 const pad=n=>String(n).padStart(2,'0');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const PN_LIMIT=3;
-
-// 睡眠は「就寝した日」を基準にしたいので 12 時間前にずらして日付を決める
-function logicalDate(type,iso){
-  const d=new Date(iso);
-  if(type==='sleep') d.setHours(d.getHours()-12);
-  return dkey(d);
-}
-const minutes=r=>Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000));
+const live=()=>db.items.filter(i=>!i.deleted);
+const active=()=>live().find(i=>i.kind==='sleep'&&!i.end);
+function logicalDate(type,iso){const d=new Date(iso);
+  if(type==='sleep')d.setHours(d.getHours()-12);return dkey(d);}
+const mins=r=>r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):0;
 const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
-function pnCountToday(){
-  const k=dkey(new Date());
-  return db.records.filter(r=>r.type==='pn'&&!r.deleted&&r.dateKey===k).length;
-}
+const touch=r=>{r.updatedAt=now();r.synced=false;};
+const pnToday=()=>live().filter(i=>i.kind==='sleep'&&i.type==='pn'&&i.dateKey===dkey(new Date())).length;
 
 function start(type){
-  if(db.active) return;
-  db.active={id:uid(),type,start:new Date().toISOString()};
-  save();render();
+  if(active())return;
+  const s=now();
+  db.items.push({id:uid(),kind:'sleep',type,start:s,end:null,
+    dateKey:logicalDate(type,s),tags:[],note:'',updatedAt:s,synced:false});
+  save();render();sync(true);
 }
 function stop(){
-  if(!db.active) return;
-  const a=db.active, end=new Date().toISOString();
-  const rec={id:a.id,type:a.type,start:a.start,end,
-             dateKey:logicalDate(a.type,a.start),synced:false};
-  if(minutes(rec)<1 && !confirm('1分未満です。記録しますか？')){db.active=null;save();render();return;}
-  if(rec.type==='pn'){
-    rec.pnIndex=db.records.filter(r=>r.type==='pn'&&!r.deleted&&r.dateKey===rec.dateKey).length+1;
-  }
-  db.records.push(rec);db.active=null;save();render();
-  toast(`${rec.type==='pn'?'PN':'睡眠'} ${durText(minutes(rec))} を記録`);
-  sync(true);
+  const a=active(); if(!a)return;
+  a.end=now(); touch(a); save(); render(); openEdit(a.id); sync(true);
 }
 
+/* ---------- 画面 ---------- */
 function render(){
-  const m=document.getElementById('main');
-  const pn=pnCountToday();
+  const m=document.getElementById('main'),a=active(),pn=pnToday();
   document.getElementById('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
-  if(db.active){
-    const a=db.active;
+  if(a){
     m.innerHTML=`<div class="center sub">${a.type==='pn'?'パワーナップ':'睡眠'}中　開始 ${hhmm(new Date(a.start))}</div>
       <div class="timer" id="tmr">00:00:00</div>
-      <button class="big stop" id="btnStop">${a.type==='pn'?'起きた（PN終了）':'起きた（睡眠終了）'}</button>
-      <div class="row"><button class="small" id="btnCancel">開始を取り消す</button></div>`;
-    document.getElementById('btnStop').onclick=stop;
-    document.getElementById('btnCancel').onclick=()=>{
-      if(confirm('この計測を破棄しますか？')){db.active=null;save();render();}};
+      <button class="big stop" id="bStop">起きた（終了）</button>
+      <div class="row"><button class="small" id="bCancel">開始を取り消す</button></div>`;
+    document.getElementById('bStop').onclick=stop;
+    document.getElementById('bCancel').onclick=()=>{
+      if(confirm('この計測を破棄しますか？')){a.deleted=true;touch(a);save();render();sync(true);}};
     tick();
   }else{
-    const last=[...db.records].filter(r=>!r.deleted).pop();
+    const last=live().filter(i=>i.kind==='sleep'&&i.end).sort((x,y)=>new Date(x.end)-new Date(y.end)).pop();
     m.innerHTML=`<button class="big sleep" id="bS">😴 睡眠を開始</button>
       <button class="big pn" id="bP">⚡ パワーナップ開始${pn>=PN_LIMIT?'（本日上限）':`（残り${PN_LIMIT-pn}）`}</button>
-      <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(minutes(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>`;
+      <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(mins(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>`;
     document.getElementById('bS').onclick=()=>start('sleep');
     document.getElementById('bP').onclick=()=>{
-      if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return;
-      start('pn');};
+      if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return; start('pn');};
   }
-  renderHist();
-  const p=db.records.filter(r=>!r.synced).length;
+  renderAng();renderHist();
+  const p=db.items.filter(i=>!i.synced).length;
   document.getElementById('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
 }
-
+function renderAng(){
+  const t=dkey(new Date());
+  const d7=new Date();d7.setDate(d7.getDate()-6);
+  const wk=live().filter(i=>i.kind==='anger'&&i.dateKey>=dkey(d7));
+  const td=wk.filter(i=>i.dateKey===t);
+  const brk=ANGER.filter(l=>wk.some(i=>i.level===l.lv))
+    .map(l=>`${l.icon}${wk.filter(i=>i.level===l.lv).length}`).join(' ');
+  document.getElementById('angSum').innerHTML=
+    `アンガーログ　今日 ${td.length}件 / 7日 ${wk.length}件<br><span style="font-size:14px">${brk||'—'}</span>`;
+}
 function renderHist(){
-  const keys=[...new Set(db.records.filter(r=>!r.deleted).map(r=>r.dateKey))].sort().reverse().slice(0,7);
+  const keys=[...new Set(live().map(i=>i.dateKey))].sort().reverse().slice(0,7);
   const h=document.getElementById('hist');
   h.innerHTML=keys.length?'':'<div class="sub">—</div>';
   keys.forEach(k=>{
-    const rs=db.records.filter(r=>r.dateKey===k&&!r.deleted)
-      .sort((a,b)=>new Date(a.start)-new Date(b.start));
-    const tot=rs.reduce((s,r)=>s+minutes(r),0);
+    const rs=live().filter(i=>i.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
+    const tot=rs.filter(i=>i.kind==='sleep').reduce((s,r)=>s+mins(r),0);
     h.insertAdjacentHTML('beforeend',
       `<div class="hist" style="border-bottom:0;padding-bottom:2px">
-         <b>${k.slice(5)}</b><span class="sub">計 ${durText(tot)}</span></div>`);
+         <b>${k.slice(5)}</b><span class="sub">睡眠計 ${durText(tot)}</span></div>`);
     rs.forEach(r=>{
-      const el=document.createElement('div');
-      el.className='hist';
-      el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+(r.pnIndex||''):'睡眠'}</span>
-        ${hhmm(new Date(r.start))}→${hhmm(new Date(r.end))}</span>
-        <span>${durText(minutes(r))}${r.synced?'':'<span class="dot"></span>'}</span>`;
-      el.onclick=()=>openEdit(r.id);
+      const el=document.createElement('div'); el.className='hist';
+      if(r.kind==='sleep'){
+        const pi=r.type==='pn'?live().filter(x=>x.kind==='sleep'&&x.type==='pn'&&x.dateKey===k
+          &&new Date(x.start)<=new Date(r.start)).length:0;
+        el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pi:'睡眠'}</span>
+          ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
+          <span class="mini">${(r.tags||[]).map(tg=>(TAGS.find(t=>t.k===tg)||{}).icon||'').join('')}${r.note?' 📝':''}</span></span>
+          <span>${r.end?durText(mins(r)):''}${r.synced?'':'<span class="dot"></span>'}</span>`;
+        el.onclick=()=>openEdit(r.id);
+      }else{
+        const l=ANGER.find(x=>x.lv===r.level)||{icon:'?',label:''};
+        el.innerHTML=`<span><span class="tag t-ang">怒</span>${hhmm(new Date(r.start))}
+          ${l.icon} ${l.label}<span class="mini"> ${r.who||''} ${(r.trig||[]).join('/')}</span></span>
+          <span>${r.synced?'':'<span class="dot"></span>'}</span>`;
+        el.onclick=()=>openAnger(r.id);
+      }
       h.appendChild(el);
     });
   });
 }
+function tick(){const a=active(),el=document.getElementById('tmr');if(!a||!el)return;
+  const s=Math.floor((Date.now()-new Date(a.start))/1000);
+  el.textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;}
+setInterval(tick,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();sync(true);}});
 
+/* ---------- 睡眠/PN 編集 ---------- */
 let cur=null;
 function openEdit(id){
-  cur=db.records.find(r=>r.id===id);
-  document.getElementById('dlgTitle').textContent=(cur.type==='pn'?'PN':'睡眠')+' を修正';
-  drawDlg();document.getElementById('dlg').showModal();
+  cur=db.items.find(i=>i.id===id); if(!cur)return;
+  document.getElementById('dlgTitle').textContent=(cur.type==='pn'?'パワーナップ':'睡眠')+' の記録';
+  document.getElementById('dlgNote').value=cur.note||'';
+  drawTags();drawDlg();document.getElementById('dlg').showModal();
 }
 function drawDlg(){
-  document.getElementById('dlgStart').textContent=new Date(cur.start).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('dlgEnd').textContent=new Date(cur.end).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('dlgDur').textContent=durText(minutes(cur));
+  const f=d=>new Date(d).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dlgStartT').textContent=f(cur.start);
+  document.getElementById('dlgEndT').textContent=cur.end?f(cur.end):'（計測中）';
+  document.getElementById('dlgDur').textContent=cur.end?durText(mins(cur)):'計測中';
+  document.getElementById('inS').value=hhmm(new Date(cur.start));
+  document.getElementById('inE').value=cur.end?hhmm(new Date(cur.end)):'';
 }
-document.querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{
-  const v=b.dataset.adj, f=v[0], n=parseInt(v.slice(1),10);
-  const t=new Date(f==='s'?cur.start:cur.end); t.setMinutes(t.getMinutes()+n);
-  if(f==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+function drawTags(){
+  const c=document.getElementById('dlgTags'); c.innerHTML='';
+  TAGS.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='chip'+((cur.tags||[]).includes(t.k)?' on':'');
+    b.innerHTML=`${t.icon} ${t.label}`;
+    b.onclick=()=>{
+      cur.tags=cur.tags||[];
+      const on=cur.tags.includes(t.k);
+      if(t.group) cur.tags=cur.tags.filter(k=>(TAGS.find(x=>x.k===k)||{}).group!==t.group);
+      if(!on) cur.tags.push(t.k);
+      touch(cur);save();drawTags();renderHist();
+    };
+    c.appendChild(b);
+  });
+}
+function shift(field,n){
+  const t=new Date(field==='s'?cur.start:cur.end||new Date());
+  t.setMinutes(t.getMinutes()+n);
+  if(field==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
   else cur.end=t.toISOString();
-  cur.synced=false;save();drawDlg();renderHist();
+  touch(cur);drawDlg();
+}
+document.querySelectorAll('.adj').forEach(b=>{
+  const f=b.dataset.f,n=+b.dataset.n; let t1,t2;
+  const go=()=>shift(f,n);
+  const down=e=>{e.preventDefault();go();
+    t1=setTimeout(()=>{t2=setInterval(go,80)},400);};
+  const up=()=>{clearTimeout(t1);clearInterval(t2);save();renderHist();};
+  b.addEventListener('pointerdown',down);
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,up));
 });
+function setTime(field,v){
+  if(!v)return; const [H,M]=v.split(':').map(Number);
+  const base=new Date(field==='s'?cur.start:cur.end||cur.start);
+  base.setHours(H,M,0,0);
+  if(field==='s'){cur.start=base.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  else{ if(cur.start&&base<new Date(cur.start))base.setDate(base.getDate()+1);
+        cur.end=base.toISOString();}
+  touch(cur);save();drawDlg();renderHist();
+}
+document.getElementById('inS').onchange=e=>setTime('s',e.target.value);
+document.getElementById('inE').onchange=e=>setTime('e',e.target.value);
+document.getElementById('dlgNote').onchange=e=>{cur.note=e.target.value;touch(cur);save();renderHist();};
 document.getElementById('dlgDel').onclick=()=>{
   if(!confirm('この記録を削除しますか？'))return;
-  cur.deleted=true;cur.synced=false;save();document.getElementById('dlg').close();render();sync(true);
-};
-document.getElementById('dlgClose').onclick=()=>{document.getElementById('dlg').close();render();sync(true);};
+  cur.deleted=true;touch(cur);save();document.getElementById('dlg').close();render();sync(true);};
+document.getElementById('dlgClose').onclick=()=>{
+  document.getElementById('dlg').close();render();sync(true);};
 
-function tick(){
-  if(!db.active)return;
-  const el=document.getElementById('tmr'); if(!el)return;
-  const s=Math.floor((Date.now()-new Date(db.active.start))/1000);
-  el.textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+/* ---------- アンガーログ ---------- */
+let acur=null;
+function openAnger(id){
+  if(id){acur=db.items.find(i=>i.id===id);}
+  else{const s=now();
+    acur={id:uid(),kind:'anger',start:s,end:s,dateKey:dkey(new Date()),
+      level:null,who:'',trig:[],note:'',updatedAt:s,synced:false};
+    db.items.push(acur);save();}
+  document.getElementById('aTime').textContent=new Date(acur.start)
+    .toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('aNote').value=acur.note||'';
+  drawAnger();document.getElementById('adlg').showModal();
 }
-setInterval(tick,1000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});
+function drawAnger(){
+  const lv=document.getElementById('aLv');lv.innerHTML='';
+  ANGER.forEach(l=>{
+    const b=document.createElement('button');
+    b.className='lvbtn'+(acur.level===l.lv?' on':'');
+    b.innerHTML=`<span class="lvic">${l.icon}</span><span>${l.label}</span>`;
+    b.onclick=()=>{acur.level=l.lv;touch(acur);save();drawAnger();renderAng();renderHist();};
+    lv.appendChild(b);
+  });
+  const w=document.getElementById('aWho');w.innerHTML='';
+  WHO.forEach(x=>{const b=document.createElement('button');
+    b.className='chip'+(acur.who===x?' on a':'');b.textContent=x;
+    b.onclick=()=>{acur.who=acur.who===x?'':x;touch(acur);save();drawAnger();renderHist();};
+    w.appendChild(b);});
+  const g=document.getElementById('aTrig');g.innerHTML='';
+  TRIG.forEach(x=>{const b=document.createElement('button');
+    b.className='chip'+((acur.trig||[]).includes(x)?' on a':'');b.textContent=x;
+    b.onclick=()=>{acur.trig=acur.trig||[];
+      acur.trig=acur.trig.includes(x)?acur.trig.filter(y=>y!==x):acur.trig.concat(x);
+      touch(acur);save();drawAnger();renderHist();};
+    g.appendChild(b);});
+}
+document.getElementById('btnAng').onclick=()=>openAnger(null);
+document.getElementById('aNote').onchange=e=>{acur.note=e.target.value;touch(acur);save();};
+document.getElementById('aDel').onclick=()=>{
+  acur.deleted=true;touch(acur);save();document.getElementById('adlg').close();render();sync(true);};
+document.getElementById('aClose').onclick=()=>{
+  if(acur.level===null){acur.deleted=true;touch(acur);save();}
+  document.getElementById('adlg').close();render();sync(true);};
 
-function toast(t){document.getElementById('syncmsg').textContent=t;}
-
+/* ---------- 同期（送信＋受信マージ） ---------- */
+function forPush(i){
+  const o=Object.assign({},i); delete o.synced;
+  if(i.kind==='sleep'){
+    o.minutes=mins(i);
+    o.pnIndex=i.type==='pn'?live().filter(x=>x.kind==='sleep'&&x.type==='pn'
+      &&x.dateKey===i.dateKey&&new Date(x.start)<=new Date(i.start)).length:'';
+    o.tagText=(i.tags||[]).map(k=>{const t=TAGS.find(x=>x.k===k);return t?t.icon+t.label:k;}).join(' ');
+  }else{
+    const l=ANGER.find(x=>x.lv===i.level);
+    o.levelText=l?l.icon+' '+l.label:'';
+  }
+  return o;
+}
+function merge(remote){
+  const map={}; db.items.forEach(i=>map[i.id]=i);
+  (remote||[]).forEach(r=>{
+    const l=map[r.id];
+    if(!l){db.items.push(Object.assign(r,{synced:true}));map[r.id]=r;}
+    else if((r.updatedAt||'')>(l.updatedAt||'')) Object.assign(l,r,{synced:true});
+  });
+}
+let busy=false;
 async function sync(silent){
   const {url,token}=db.settings;
-  const pend=db.records.filter(r=>!r.synced);
-  if(!url||!pend.length){if(!silent)toast(url?'送信するものはありません':'設定に GAS URL を入れてください');return;}
-  if(!silent)toast('同期中…');
+  if(!url){ if(!silent)msg('設定に GAS の URL を入れてください'); return; }
+  if(busy)return; busy=true;
+  if(!silent)msg('同期中…');
   try{
+    const push=db.items.filter(i=>!i.synced).map(forPush);
     const res=await fetch(url,{method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({token,records:pend.map(r=>({
-        id:r.id,type:r.type,dateKey:r.dateKey,start:r.start,end:r.end,
-        minutes:minutes(r),pnIndex:r.pnIndex||'',deleted:!!r.deleted}))})});
+      body:JSON.stringify({token,push})});
     const j=await res.json();
-    if(!j.ok) throw new Error(j.error||'NG');
-    j.saved.forEach(id=>{const r=db.records.find(x=>x.id===id); if(r)r.synced=true;});
-    save();render();toast('同期しました');
-  }catch(e){toast('同期失敗（未同期のまま保持）');}
+    if(!j.ok)throw new Error(j.error||'NG');
+    (j.saved||[]).forEach(id=>{const r=db.items.find(x=>x.id===id);if(r)r.synced=true;});
+    merge(j.items);
+    save();render();msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
+  }catch(e){msg('同期失敗（記録は端末に保持）');}
+  finally{busy=false;}
 }
+function msg(t){document.getElementById('syncmsg').textContent=t;}
 document.getElementById('btnSync').onclick=()=>sync(false);
 document.getElementById('btnSave').onclick=()=>{
   db.settings.url=document.getElementById('cfgUrl').value.trim();
   db.settings.token=document.getElementById('cfgToken').value.trim();
-  save();toast('設定を保存しました');
-};
+  save();msg('保存しました');sync(false);};
 document.getElementById('cfgUrl').value=db.settings.url;
 document.getElementById('cfgToken').value=db.settings.token;
 
-// ホーム画面ショートカットからの起動（?a=sleep / ?a=pn）
-const a=new URLSearchParams(location.search).get('a');
-if(a&&!db.active&&(a==='sleep'||a==='pn')) start(a);
+const q=new URLSearchParams(location.search).get('a');
+if((q==='sleep'||q==='pn')&&!active()) start(q);
+if(q==='anger') openAnger(null);
 history.replaceState(null,'',location.pathname);
-
-render();
+render(); sync(true);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 window.addEventListener('online',()=>sync(true));
 </script>
