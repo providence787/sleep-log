@@ -11,10 +11,9 @@
 :root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;--line:#242a36;
       --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950;--ang:#a06cd5}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--fg);
+body{margin:0 auto;max-width:560px;background:var(--bg);color:var(--fg);
      font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
-     padding:calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 24px);
-     max-width:560px;margin:0 auto}
+     padding:calc(env(safe-area-inset-top) + 8px) 14px calc(env(safe-area-inset-bottom) + 24px)}
 header{display:flex;justify-content:space-between;align-items:baseline;padding:6px 2px 12px}
 h1{font-size:16px;margin:0;letter-spacing:.04em}
 .sub{color:var(--sub);font-size:12px}
@@ -22,14 +21,14 @@ h1{font-size:16px;margin:0;letter-spacing:.04em}
 button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;background:#2a3040}
 .big{width:100%;font-size:21px;font-weight:700;padding:26px 14px;margin-bottom:10px;line-height:1.3}
 .sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}
-.stop{background:var(--stop)}.ang{background:var(--ang)}
+.stop{background:var(--stop)}.ang{background:var(--ang)}.okb{background:#2f7d43}
 .timer{font-size:44px;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;font-weight:700}
 .center{text-align:center}.mt{margin-top:10px}
 .row{display:flex;gap:6px}.row>*{flex:1}
 .small{font-size:13px;padding:9px}
 .adj{font-size:13px;padding:10px 0;background:#2a3040;touch-action:none;user-select:none}
-.hist{display:flex;justify-content:space-between;align-items:center;
-      padding:9px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.hist{display:flex;justify-content:space-between;align-items:center;gap:8px;
+      padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px}
 .tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;white-space:nowrap}
 .t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
 .t-ang{background:#3a2550;color:#d9bcff}
@@ -38,14 +37,15 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
 input{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
       background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
 input[type=time]{width:auto;margin:0;padding:7px 9px}
-details summary{color:var(--sub);font-size:13px;padding:4px}
-dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;width:92%;max-width:420px;padding:0}
+details summary{color:var(--sub);font-size:13px;padding:6px 4px}
+dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;
+       width:92%;max-width:420px;padding:0;max-height:86vh}
 dialog::backdrop{background:#000a}
 .pad{padding:16px}
 label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{background:#222836;border:1px solid #2f3purple;border:1px solid #2f3646;color:#c7cedd;
-      border-radius:999px;padding:8px 12px;font-size:13px}
+.chip{background:#222836;border:1px solid #2f3646;color:#c7cedd;
+      border-radius:999px;padding:9px 13px;font-size:13px}
 .chip.on{background:#2f4fd8;border-color:#5b7cfa;color:#fff}
 .chip.on.a{background:#6b3fa8;border-color:#a06cd5}
 .mini{font-size:12px;color:var(--sub)}
@@ -56,10 +56,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 </style>
 </head>
 <body>
-<header>
-  <h1>SLEEP LOG</h1>
-  <div class="sub" id="today"></div>
-</header>
+<header><h1>SLEEP LOG</h1><div class="sub" id="today"></div></header>
 
 <div class="card" id="main"></div>
 
@@ -85,11 +82,17 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
     <label>トークン</label>
     <input id="cfgToken">
-    <button class="small" id="btnSave">保存</button>
+    <button class="small okb" id="btnSave" style="width:100%">保存して同期</button>
+    <div class="center mini mt" id="cfgMsg"></div>
   </div>
 </details>
 
-<!-- 睡眠/PN 編集 -->
+<details class="mt">
+  <summary>削除済みの記録（復元できます）</summary>
+  <div class="card mt" id="trash"></div>
+</details>
+
+<!-- 睡眠 / PN -->
 <dialog id="dlg"><div class="pad">
   <div id="dlgTitle" style="font-weight:700"></div>
   <div class="center mt" id="dlgDur" style="font-size:24px;font-weight:700"></div>
@@ -113,31 +116,37 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <details class="mt"><summary>時刻を直接入力</summary>
     <div class="row mt" style="align-items:center">
       <span class="mini">開始</span><input type="time" id="inS">
-      <span class="mini">終了</span><input type="time" id="inE">
-    </div>
+      <span class="mini">終了</span><input type="time" id="inE"></div>
   </details>
 
-  <label>メモ</label>
+  <label>メモ（もう一度タップで解除）</label>
   <div class="chips" id="dlgTags"></div>
   <input id="dlgNote" class="mt" placeholder="自由メモ（任意）">
 
-
+  <div class="row mt">
+    <button class="small stop" id="dlgDel">削除</button>
+    <button class="small" id="dlgClose" style="flex:2">閉じる</button>
+  </div>
 </div></dialog>
 
 <!-- アンガーログ -->
 <dialog id="adlg"><div class="pad">
   <div style="font-weight:700">アンガーログ <span class="mini" id="aTime"></span></div>
-  <label>どうなった</label>
+  <label>どうなった（必須・もう一度タップで解除）</label>
   <div id="aLv"></div>
   <label>相手</label><div class="chips" id="aWho"></div>
   <label>きっかけ（複数可）</label><div class="chips" id="aTrig"></div>
   <input id="aNote" class="mt" placeholder="自由メモ（任意）">
-  <div class="row mt"><button class="small stop" id="aDel">削除</button>
-    <button class="small" id="aClose" style="flex:2">閉じる</button></div>
+  <div class="center mini" id="aMsg"></div>
+  <div class="row mt">
+    <button class="small stop" id="aDel">削除</button>
+    <button class="small" id="aCancel">キャンセル</button>
+    <button class="small okb" id="aSave" style="flex:2">保存</button>
+  </div>
 </div></dialog>
 
 <script>
-/* ===== ここを好きに編集できます ===== */
+/* ===== 項目定義（自由に増減できます） ===== */
 const TAGS=[
   {k:'sex',   icon:'❤️',label:'sex'},
   {k:'wake2', icon:'◎', label:'寝起き◎', group:'wake'},
@@ -160,101 +169,108 @@ const ANGER=[
 const WHO=['子','配偶者','自分','仕事','その他'];
 const TRIG=['寝不足','疲労','空腹','時間に追われた','散らかり','ぐずり・反抗','言うことを聞かない','スマホ','仕事'];
 const PN_LIMIT=3;
-const DEFAULT_URL='https://script.google.com/macros/s/AKfycbzMzYjfvuHklMNup2e9O-0A42os4p80fD3noJxpfEO_ziOyDM6MKUgjRZDV3XuC3Mri/exec';     // 埋め込む場合はここに /exec の URL
-const DEFAULT_TOKEN='sleep-well-live-well';   // 埋め込む場合はここにトークン
-/* ================================== */
+const DEFAULT_URL='https://script.google.com/macros/s/AKfycbzMzYjfvuHklMNup2e9O-0A42os4p80fD3noJxpfEO_ziOyDM6MKUgjRZDV3XuC3Mri/exec';
+const DEFAULT_TOKEN='sleep-well-live-well';
+/* ======================================= */
+
+const $=id=>document.getElementById(id);
+function on(id,ev,fn){const el=$(id);          // 要素が無くても他の登録を止めない
+  if(el) el.addEventListener(ev,fn); else console.warn('missing element:',id);}
 
 const KEY='sleeplog.v2';
 const blank=()=>({items:[],settings:{url:'',token:''}});
-let db;
-try{db=JSON.parse(localStorage.getItem(KEY))||null}catch(e){db=null}
-if(!db){ // v1 からの移行
+let db=null;
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!db){
   db=blank();
-  try{
-    const o=JSON.parse(localStorage.getItem('sleeplog.v1'));
-    if(o){
-      db.settings=o.settings||db.settings;
+  try{const o=JSON.parse(localStorage.getItem('sleeplog.v1'));
+    if(o){db.settings=o.settings||db.settings;
       (o.records||[]).forEach(r=>db.items.push({id:r.id,kind:'sleep',type:r.type,
         start:r.start,end:r.end,dateKey:r.dateKey,tags:[],note:'',
-        deleted:!!r.deleted,updatedAt:r.end||new Date().toISOString(),synced:false}));
-    }
+        deleted:!!r.deleted,updatedAt:r.end||new Date().toISOString(),synced:false}));}
   }catch(e){}
 }
+if(!db.items) db.items=[];
 if(!db.settings) db.settings={url:'',token:''};
 if(!db.settings.url)   db.settings.url=DEFAULT_URL;
 if(!db.settings.token) db.settings.token=DEFAULT_TOKEN;
+
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
 const now=()=>new Date().toISOString();
 const pad=n=>String(n).padStart(2,'0');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmt=d=>new Date(d).toLocaleString('ja-JP',
+  {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const live=()=>db.items.filter(i=>!i.deleted);
-const active=()=>live().find(i=>i.kind==='sleep'&&!i.end);
+const activeRec=()=>live().find(i=>i.kind==='sleep'&&!i.end);
+const clone=o=>JSON.parse(JSON.stringify(o));
 function logicalDate(type,iso){const d=new Date(iso);
   if(type==='sleep')d.setHours(d.getHours()-12);return dkey(d);}
 const mins=r=>r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):0;
 const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
 const touch=r=>{r.updatedAt=now();r.synced=false;};
-const drop=r=>{                        // 未同期なら痕跡を残さず消す
-  if(r.everSynced){ r.deleted=true; touch(r); }
-  else { const i=db.items.indexOf(r); if(i>=0) db.items.splice(i,1); }
-  save();
-};
-const pnToday=()=>live().filter(i=>i.kind==='sleep'&&i.type==='pn'&&i.dateKey===dkey(new Date())).length;
+const drop=r=>{                       // 未同期なら痕跡を残さず消す
+  if(!r)return;
+  if(r.everSynced){r.deleted=true;touch(r);}
+  else{const i=db.items.indexOf(r);if(i>=0)db.items.splice(i,1);}
+  save();};
+const pnToday=()=>live().filter(i=>i.kind==='sleep'&&i.type==='pn'
+  &&i.dateKey===dkey(new Date())).length;
+const pnIndexOf=r=>live().filter(x=>x.kind==='sleep'&&x.type==='pn'
+  &&x.dateKey===r.dateKey&&new Date(x.start)<=new Date(r.start)).length;
 
-function start(type){
-  if(active())return;
+/* ---------- 計測 ---------- */
+function startRec(type){
+  if(activeRec())return;
   const s=now();
   db.items.push({id:uid(),kind:'sleep',type,start:s,end:null,
     dateKey:logicalDate(type,s),tags:[],note:'',updatedAt:s,synced:false});
   save();render();sync(true);
 }
-function stop(){
-  const a=active(); if(!a)return;
-  a.end=now(); touch(a); save(); render(); openEdit(a.id); sync(true);
+function stopRec(){
+  const a=activeRec(); if(!a)return;
+  a.end=now();touch(a);save();render();openEdit(a.id);sync(true);
 }
 
-/* ---------- 画面 ---------- */
+/* ---------- 描画 ---------- */
 function render(){
-  const m=document.getElementById('main'),a=active(),pn=pnToday();
-  document.getElementById('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
+  const m=$('main'),a=activeRec(),pn=pnToday();
+  $('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
   if(a){
     m.innerHTML=`<div class="center sub">${a.type==='pn'?'パワーナップ':'睡眠'}中　開始 ${hhmm(new Date(a.start))}</div>
       <div class="timer" id="tmr">00:00:00</div>
       <button class="big stop" id="bStop">起きた（終了）</button>
       <div class="row"><button class="small" id="bCancel">開始を取り消す</button></div>`;
-    document.getElementById('bStop').onclick=stop;
-    document.getElementById('bCancel').onclick=()=>{
-      if(confirm('この計測を破棄しますか？')){a.deleted=true;touch(a);save();render();sync(true);}};
+    on('bStop','click',stopRec);
+    on('bCancel','click',()=>{if(confirm('この計測を破棄しますか？')){drop(a);render();sync(true);}});
     tick();
   }else{
-    const last=live().filter(i=>i.kind==='sleep'&&i.end).sort((x,y)=>new Date(x.end)-new Date(y.end)).pop();
+    const last=live().filter(i=>i.kind==='sleep'&&i.end)
+      .sort((x,y)=>new Date(x.end)-new Date(y.end)).pop();
     m.innerHTML=`<button class="big sleep" id="bS">😴 睡眠を開始</button>
       <button class="big pn" id="bP">⚡ パワーナップ開始${pn>=PN_LIMIT?'（本日上限）':`（残り${PN_LIMIT-pn}）`}</button>
       <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(mins(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>`;
-    document.getElementById('bS').onclick=()=>start('sleep');
-    document.getElementById('bP').onclick=()=>{
-      if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return; start('pn');};
+    on('bS','click',()=>startRec('sleep'));
+    on('bP','click',()=>{if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return;
+      startRec('pn');});
   }
-  renderAng();renderHist();
+  renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
-  document.getElementById('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
+  $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
 }
 function renderAng(){
-  const t=dkey(new Date());
-  const d7=new Date();d7.setDate(d7.getDate()-6);
+  const t=dkey(new Date()),d7=new Date();d7.setDate(d7.getDate()-6);
   const wk=live().filter(i=>i.kind==='anger'&&i.dateKey>=dkey(d7));
-  const td=wk.filter(i=>i.dateKey===t);
   const brk=ANGER.filter(l=>wk.some(i=>i.level===l.lv))
-    .map(l=>`${l.icon}${wk.filter(i=>i.level===l.lv).length}`).join(' ');
-  document.getElementById('angSum').innerHTML=
-    `アンガーログ　今日 ${td.length}件 / 7日 ${wk.length}件<br><span style="font-size:14px">${brk||'—'}</span>`;
+    .map(l=>`${l.icon}${wk.filter(i=>i.level===l.lv).length}`).join('  ');
+  $('angSum').innerHTML=`アンガーログ　今日 ${wk.filter(i=>i.dateKey===t).length}件 / 7日 ${wk.length}件
+    <br><span style="font-size:15px">${brk||'—'}</span>`;
 }
 function renderHist(){
   const keys=[...new Set(live().map(i=>i.dateKey))].sort().reverse().slice(0,7);
-  const h=document.getElementById('hist');
-  h.innerHTML=keys.length?'':'<div class="sub">—</div>';
+  const h=$('hist'); h.innerHTML=keys.length?'':'<div class="sub">—</div>';
   keys.forEach(k=>{
     const rs=live().filter(i=>i.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
     const tot=rs.filter(i=>i.kind==='sleep').reduce((s,r)=>s+mins(r),0);
@@ -264,177 +280,173 @@ function renderHist(){
     rs.forEach(r=>{
       const el=document.createElement('div'); el.className='hist';
       if(r.kind==='sleep'){
-        const pi=r.type==='pn'?live().filter(x=>x.kind==='sleep'&&x.type==='pn'&&x.dateKey===k
-          &&new Date(x.start)<=new Date(r.start)).length:0;
-        el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pi:'睡眠'}</span>
+        el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pnIndexOf(r):'睡眠'}</span>
           ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
           <span class="mini">${(r.tags||[]).map(tg=>(TAGS.find(t=>t.k===tg)||{}).icon||'').join('')}${r.note?' 📝':''}</span></span>
           <span>${r.end?durText(mins(r)):''}${r.synced?'':'<span class="dot"></span>'}</span>`;
-        el.onclick=()=>openEdit(r.id);
+        el.addEventListener('click',()=>openEdit(r.id));
       }else{
-        const l=ANGER.find(x=>x.lv===r.level)||{icon:'?',label:''};
+        const l=ANGER.find(x=>x.lv===r.level)||{icon:'?',label:'(未設定)'};
         el.innerHTML=`<span><span class="tag t-ang">怒</span>${hhmm(new Date(r.start))}
           ${l.icon} ${l.label}<span class="mini"> ${r.who||''} ${(r.trig||[]).join('/')}</span></span>
           <span>${r.synced?'':'<span class="dot"></span>'}</span>`;
-        el.onclick=()=>openAnger(r.id);
+        el.addEventListener('click',()=>openAnger(r.id));
       }
       h.appendChild(el);
     });
   });
 }
-function tick(){const a=active(),el=document.getElementById('tmr');if(!a||!el)return;
+function renderTrash(){
+  const t=$('trash'),ds=db.items.filter(i=>i.deleted)
+    .sort((a,b)=>new Date(b.start)-new Date(a.start)).slice(0,30);
+  t.innerHTML=ds.length?'':'<div class="sub">ありません</div>';
+  ds.forEach(r=>{
+    const el=document.createElement('div');el.className='hist';
+    const nm=r.kind==='anger'?'怒 '+((ANGER.find(x=>x.lv===r.level)||{}).label||'(未設定)')
+      :(r.type==='pn'?'PN':'睡眠');
+    el.innerHTML=`<span class="mini">${fmt(r.start)}　${nm}</span>`;
+    const b=document.createElement('button');b.className='small';b.textContent='復元';
+    b.style.flex='0 0 auto';
+    b.addEventListener('click',()=>{r.deleted=false;touch(r);save();render();sync(true);});
+    el.appendChild(b);t.appendChild(el);
+  });
+}
+function tick(){const a=activeRec(),el=$('tmr');if(!a||!el)return;
   const s=Math.floor((Date.now()-new Date(a.start))/1000);
   el.textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;}
 setInterval(tick,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();sync(true);}});
 
-/* ---------- 睡眠/PN 編集 ---------- */
+/* ---------- 睡眠 / PN 編集（変更は即反映） ---------- */
 let cur=null;
 function openEdit(id){
   cur=db.items.find(i=>i.id===id); if(!cur)return;
-  document.getElementById('dlgTitle').textContent=(cur.type==='pn'?'パワーナップ':'睡眠')+' の記録';
-  document.getElementById('dlgNote').value=cur.note||'';
-  drawTags();drawDlg();document.getElementById('dlg').showModal();
+  $('dlgTitle').textContent=(cur.type==='pn'?'パワーナップ':'睡眠')+' の記録';
+  $('dlgNote').value=cur.note||'';
+  drawTags();drawDlg();$('dlg').showModal();
 }
 function drawDlg(){
-  const f=d=>new Date(d).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('dlgStartT').textContent=f(cur.start);
-  document.getElementById('dlgEndT').textContent=cur.end?f(cur.end):'（計測中）';
-  document.getElementById('dlgDur').textContent=cur.end?durText(mins(cur)):'計測中';
-  document.getElementById('inS').value=hhmm(new Date(cur.start));
-  document.getElementById('inE').value=cur.end?hhmm(new Date(cur.end)):'';
+  $('dlgStartT').textContent=fmt(cur.start);
+  $('dlgEndT').textContent=cur.end?fmt(cur.end):'（計測中）';
+  $('dlgDur').textContent=cur.end?durText(mins(cur)):'計測中';
+  $('inS').value=hhmm(new Date(cur.start));
+  $('inE').value=cur.end?hhmm(new Date(cur.end)):'';
 }
 function drawTags(){
-  const c=document.getElementById('dlgTags'); c.innerHTML='';
+  const c=$('dlgTags'); c.innerHTML='';
   TAGS.forEach(t=>{
     const b=document.createElement('button');
     b.className='chip'+((cur.tags||[]).includes(t.k)?' on':'');
     b.innerHTML=`${t.icon} ${t.label}`;
-    b.onclick=()=>{
+    b.addEventListener('click',()=>{
       cur.tags=cur.tags||[];
-      const on=cur.tags.includes(t.k);
-      // 同じグループ（寝起きなど）は排他、それ以外は自分だけ外す
+      const isOn=cur.tags.includes(t.k);
       cur.tags=t.group
-        ? cur.tags.filter(k=>(TAGS.find(x=>x.k===k)||{}).group!==t.group)
-        : cur.tags.filter(k=>k!==t.k);
-      if(!on) cur.tags.push(t.k);
+        ? cur.tags.filter(k=>(TAGS.find(x=>x.k===k)||{}).group!==t.group)  // 同グループは排他
+        : cur.tags.filter(k=>k!==t.k);                                     // それ以外は自分を外す
+      if(!isOn) cur.tags.push(t.k);
       touch(cur);save();drawTags();renderHist();
-    };
+    });
     c.appendChild(b);
   });
 }
-function shift(field,n){
-  const t=new Date(field==='s'?cur.start:cur.end||new Date());
+function shift(f,n){
+  const t=new Date(f==='s'?cur.start:(cur.end||new Date()));
   t.setMinutes(t.getMinutes()+n);
-  if(field==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  if(f==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
   else cur.end=t.toISOString();
   touch(cur);drawDlg();
 }
 document.querySelectorAll('.adj').forEach(b=>{
   const f=b.dataset.f,n=+b.dataset.n; let t1,t2;
-  const go=()=>shift(f,n);
-  const down=e=>{e.preventDefault();go();
-    t1=setTimeout(()=>{t2=setInterval(go,80)},400);};
-  const up=()=>{clearTimeout(t1);clearInterval(t2);save();renderHist();};
-  b.addEventListener('pointerdown',down);
-  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,up));
+  const go=()=>{if(cur)shift(f,n);};
+  b.addEventListener('pointerdown',e=>{e.preventDefault();go();
+    t1=setTimeout(()=>{t2=setInterval(go,80)},400);});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>
+    b.addEventListener(ev,()=>{clearTimeout(t1);clearInterval(t2);save();renderHist();}));
 });
-function setTime(field,v){
-  if(!v)return; const [H,M]=v.split(':').map(Number);
-  const base=new Date(field==='s'?cur.start:cur.end||cur.start);
+function setTime(f,v){
+  if(!v||!cur)return; const [H,M]=v.split(':').map(Number);
+  const base=new Date(f==='s'?cur.start:(cur.end||cur.start));
   base.setHours(H,M,0,0);
-  if(field==='s'){cur.start=base.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
-  else{ if(cur.start&&base<new Date(cur.start))base.setDate(base.getDate()+1);
-        cur.end=base.toISOString();}
+  if(f==='s'){cur.start=base.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  else{if(base<new Date(cur.start))base.setDate(base.getDate()+1);cur.end=base.toISOString();}
   touch(cur);save();drawDlg();renderHist();
 }
-document.getElementById('inS').onchange=e=>setTime('s',e.target.value);
-document.getElementById('inE').onchange=e=>setTime('e',e.target.value);
-document.getElementById('dlgNote').onchange=e=>{cur.note=e.target.value;touch(cur);save();renderHist();};
-document.getElementById('dlgDel').onclick=()=>{
-  if(!confirm('この記録を削除しますか？'))return;
-  cur.deleted=true;touch(cur);save();document.getElementById('dlg').close();render();sync(true);};
-document.getElementById('dlgClose').onclick=()=>{
-  document.getElementById('dlg').close();render();sync(true);};
+on('inS','change',e=>setTime('s',e.target.value));
+on('inE','change',e=>setTime('e',e.target.value));
+on('dlgNote','change',e=>{if(cur){cur.note=e.target.value;touch(cur);save();renderHist();}});
+on('dlgClose','click',()=>$('dlg').close());
+on('dlgDel','click',()=>{if(!cur||!confirm('この記録を削除しますか？'))return;
+  drop(cur);cur=null;$('dlg').close();});
+on('dlg','close',()=>{
+  if(cur){const v=$('dlgNote').value;
+    if(v!==(cur.note||'')){cur.note=v;touch(cur);save();}}
+  cur=null;render();sync(true);});
 
-const dlg=document.getElementById('dlg');
-dlg.addEventListener('close',()=>{
-  if(cur){
-    const v=document.getElementById('dlgNote').value;
-    if(v!==(cur.note||'')){cur.note=v;touch(cur);save();}
-  }
-  cur=null;render();sync(true);
-});
-document.getElementById('dlgClose').onclick=()=>dlg.close();
-document.getElementById('dlgDel').onclick=()=>{
-  if(!confirm('この記録を削除しますか？'))return;
-  drop(cur);cur=null;dlg.close();
-};
-
-/* ---------- アンガーログ ---------- */
-let acur=null,aNew=false,aDiscard=false;
-const adlg=document.getElementById('adlg');
+/* ---------- アンガーログ（保存を押すまで確定しない） ---------- */
+let acur=null,aNew=false;
 function openAnger(id){
-  aDiscard=false;
-  if(id){ acur=db.items.find(i=>i.id===id); aNew=false; if(!acur)return; }
-  else{
-    const s=now();
+  if(id){const src=db.items.find(i=>i.id===id); if(!src)return;
+    acur=clone(src); aNew=false;}
+  else{const s=now();
     acur={id:uid(),kind:'anger',start:s,end:s,dateKey:dkey(new Date()),
       level:null,who:'',trig:[],note:'',updatedAt:s,synced:false};
-    aNew=true;                       // ここでは db に入れない（下書き）
-  }
-  document.getElementById('aTime').textContent=new Date(acur.start)
-    .toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('aNote').value=acur.note||'';
-  drawAnger();adlg.showModal();
+    aNew=true;}
+  $('aTime').textContent=fmt(acur.start);
+  $('aNote').value=acur.note||'';
+  $('aMsg').textContent='';
+  $('aDel').style.display=aNew?'none':'';
+  drawAnger();$('adlg').showModal();
 }
 function drawAnger(){
-  const lv=document.getElementById('aLv');lv.innerHTML='';
+  const lv=$('aLv');lv.innerHTML='';
   ANGER.forEach(l=>{
     const b=document.createElement('button');
     b.className='lvbtn'+(acur.level===l.lv?' on':'');
     b.innerHTML=`<span class="lvic">${l.icon}</span><span>${l.label}</span>`;
-    b.onclick=()=>{acur.level=(acur.level===l.lv?null:l.lv);drawAnger();};
+    b.addEventListener('click',()=>{acur.level=(acur.level===l.lv?null:l.lv);drawAnger();});
     lv.appendChild(b);
   });
-  const w=document.getElementById('aWho');w.innerHTML='';
+  const w=$('aWho');w.innerHTML='';
   WHO.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+(acur.who===x?' on a':'');b.textContent=x;
-    b.onclick=()=>{acur.who=(acur.who===x?'':x);drawAnger();};
+    b.addEventListener('click',()=>{acur.who=(acur.who===x?'':x);drawAnger();});
     w.appendChild(b);});
-  const g=document.getElementById('aTrig');g.innerHTML='';
+  const g=$('aTrig');g.innerHTML='';
   TRIG.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+((acur.trig||[]).includes(x)?' on a':'');b.textContent=x;
-    b.onclick=()=>{acur.trig=acur.trig||[];
+    b.addEventListener('click',()=>{acur.trig=acur.trig||[];
       acur.trig=acur.trig.includes(x)?acur.trig.filter(y=>y!==x):acur.trig.concat(x);
-      drawAnger();};
+      drawAnger();});
     g.appendChild(b);});
 }
-adlg.addEventListener('close',()=>{        // 戻るボタンで閉じた場合もここを通る
+function closeAnger(){acur=null;$('adlg').close();render();sync(true);}
+on('btnAng','click',()=>openAnger(null));
+on('aCancel','click',closeAnger);
+on('adlg','cancel',e=>{e.preventDefault();closeAnger();});   // 端末の戻るボタン
+on('aSave','click',()=>{
   if(!acur)return;
-  acur.note=document.getElementById('aNote').value;
-  if(aDiscard || acur.level===null){       // 未選択／破棄なら保存しない
-    if(!aNew) drop(acur);
-  }else{
-    if(aNew){db.items.push(acur);aNew=false;}
-    touch(acur);save();
-  }
-  acur=null;render();sync(true);
+  if(acur.level===null){$('aMsg').textContent='「どうなった」を選んでください';return;}
+  acur.note=$('aNote').value;
+  if(aNew){acur.updatedAt=now();acur.synced=false;db.items.push(acur);}
+  else{const t=db.items.find(i=>i.id===acur.id);
+    if(t){Object.assign(t,acur);touch(t);}}
+  save();closeAnger();
 });
-document.getElementById('btnAng').onclick=()=>openAnger(null);
-document.getElementById('aClose').onclick=()=>adlg.close();
-document.getElementById('aDel').onclick=()=>{
-  if(!aNew && !confirm('この記録を削除しますか？'))return;
-  aDiscard=true;adlg.close();
-};
+on('aDel','click',()=>{
+  if(!acur||aNew){closeAnger();return;}
+  if(!confirm('この記録を削除しますか？'))return;
+  const t=db.items.find(i=>i.id===acur.id); if(t)drop(t);
+  closeAnger();
+});
 
-/* ---------- 同期（送信＋受信マージ） ---------- */
+/* ---------- 同期 ---------- */
 function forPush(i){
   const o=Object.assign({},i); delete o.synced; delete o.everSynced;
   if(i.kind==='sleep'){
     o.minutes=mins(i);
-    o.pnIndex=i.type==='pn'?live().filter(x=>x.kind==='sleep'&&x.type==='pn'
-      &&x.dateKey===i.dateKey&&new Date(x.start)<=new Date(i.start)).length:'';
+    o.pnIndex=i.type==='pn'?pnIndexOf(i):'';
     o.tagText=(i.tags||[]).map(k=>{const t=TAGS.find(x=>x.k===k);return t?t.icon+t.label:k;}).join(' ');
   }else{
     const l=ANGER.find(x=>x.lv===i.level);
@@ -452,35 +464,35 @@ function merge(remote){
 }
 let busy=false;
 async function sync(silent){
-  const {url,token}=db.settings;
-  if(!url){ if(!silent)msg('設定に GAS の URL を入れてください'); return; }
+  const url=db.settings.url,token=db.settings.token;
+  if(!url){if(!silent)msg('設定に GAS の URL を入れてください');return;}
   if(busy)return; busy=true;
   if(!silent)msg('同期中…');
   try{
     const push=db.items.filter(i=>!i.synced).map(forPush);
     const res=await fetch(url,{method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({token,push})});
+      body:JSON.stringify({token:token,push:push})});
     const j=await res.json();
     if(!j.ok)throw new Error(j.error||'NG');
     (j.saved||[]).forEach(id=>{const r=db.items.find(x=>x.id===id);
       if(r){r.synced=true;r.everSynced=true;}});
-    merge(j.items);
-    save();render();msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
-  }catch(e){msg('同期失敗（記録は端末に保持）');}
+    merge(j.items);save();render();
+    msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
+  }catch(e){msg('同期失敗：'+e.message+'（記録は端末に保持）');}
   finally{busy=false;}
 }
-function msg(t){document.getElementById('syncmsg').textContent=t;}
-document.getElementById('btnSync').onclick=()=>sync(false);
-document.getElementById('btnSave').onclick=()=>{
-  db.settings.url=document.getElementById('cfgUrl').value.trim();
-  db.settings.token=document.getElementById('cfgToken').value.trim();
-  save();msg('保存しました');sync(false);};
-document.getElementById('cfgUrl').value=db.settings.url;
-document.getElementById('cfgToken').value=db.settings.token;
+function msg(t){$('syncmsg').textContent=t;$('cfgMsg').textContent=t;}
+on('btnSync','click',()=>sync(false));
+on('btnSave','click',()=>{
+  db.settings.url=$('cfgUrl').value.trim();
+  db.settings.token=$('cfgToken').value.trim();
+  save();msg('保存しました');sync(false);});
+$('cfgUrl').value=db.settings.url;
+$('cfgToken').value=db.settings.token;
 
 const q=new URLSearchParams(location.search).get('a');
-if((q==='sleep'||q==='pn')&&!active()) start(q);
+if((q==='sleep'||q==='pn')&&!activeRec()) startRec(q);
 if(q==='anger') openAnger(null);
 history.replaceState(null,'',location.pathname);
 render(); sync(true);
