@@ -9,7 +9,7 @@
 <link rel="icon" href="icon-192.png">
 <style>
 :root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;--line:#242a36;
-      --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950;--ang:#a06cd5}
+      --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950;--ang:#6d8fa8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0 auto;max-width:560px;background:var(--bg);color:var(--fg);
      font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
@@ -31,15 +31,16 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
       padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px}
 .tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;white-space:nowrap}
 .t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
-.t-ang{background:#3a2550;color:#d9bcff}
+.t-ang{background:#24323a;color:#bcd7e6}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--stop);display:inline-block;margin-left:6px}
 .sync{color:var(--sub);font-size:12px;text-align:center;min-height:16px}
-input{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
+input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
       background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
+textarea{min-height:110px;font-size:13px;line-height:1.5}
 input[type=time]{width:auto;margin:0;padding:7px 9px}
 details summary{color:var(--sub);font-size:13px;padding:6px 4px}
 dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;
-       width:92%;max-width:420px;padding:0;max-height:86vh}
+       width:92%;max-width:440px;padding:0;max-height:88vh}
 dialog::backdrop{background:#000a}
 .pad{padding:16px}
 label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
@@ -47,23 +48,23 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .chip{background:#222836;border:1px solid #2f3646;color:#c7cedd;
       border-radius:999px;padding:9px 13px;font-size:13px}
 .chip.on{background:#2f4fd8;border-color:#5b7cfa;color:#fff}
-.chip.on.a{background:#6b3fa8;border-color:#a06cd5}
+.chip.on.a{background:#3d6b85;border-color:#6d8fa8}
 .mini{font-size:12px;color:var(--sub)}
 .lvbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
        background:#222836;border:1px solid #2f3646;margin-bottom:6px;padding:13px}
-.lvbtn.on{background:#6b3fa8;border-color:#a06cd5}
+.lvbtn.on{background:#3d6b85;border-color:#6d8fa8}
 .lvic{font-size:19px;width:26px;text-align:center}
 </style>
 </head>
 <body>
-<header><h1>SLEEP LOG</h1><div class="sub" id="today"></div></header>
+<header><h1 id="appTitle">SLEEP LOG</h1><div class="sub" id="today"></div></header>
 
 <div class="card" id="main"></div>
 
 <div class="card">
   <div class="row" style="align-items:center">
     <div class="sub" id="angSum" style="flex:2"></div>
-    <button class="small ang" id="btnAng" style="flex:1">怒りを記録</button>
+    <button class="small ang" id="btnAng" style="flex:1">記録</button>
   </div>
 </div>
 
@@ -74,6 +75,8 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 
 <div class="sync" id="syncmsg"></div>
 <button class="small mt" id="btnSync" style="width:100%">同期（スプレッドシート）</button>
+
+<button class="small mt okb" id="btnCfg" style="width:100%">項目をカスタマイズ</button>
 
 <details class="mt">
   <summary>設定</summary>
@@ -129,15 +132,16 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- アンガーログ -->
+<!-- 場面ログ -->
 <dialog id="adlg"><div class="pad">
-  <div style="font-weight:700">アンガーログ <span class="mini" id="aTime"></span></div>
-  <label>どうなった（必須・もう一度タップで解除）</label>
+  <div style="font-weight:700"><span id="aHead"></span> <span class="mini" id="aTime"></span></div>
+  <label>自分の反応（必須・もう一度タップで解除）</label>
   <div id="aLv"></div>
   <label>相手</label><div class="chips" id="aWho"></div>
-  <label>きっかけ（複数可）</label><div class="chips" id="aTrig"></div>
+  <label>場面（複数可）</label><div class="chips" id="aTrig"></div>
   <input id="aNote" class="mt" placeholder="自由メモ（任意）">
-  <div class="center mini" id="aMsg"></div>
+  <div class="row"><button class="small" id="aSame">前回と同じ相手・場面を入れる</button></div>
+  <div class="center mini mt" id="aMsg"></div>
   <div class="row mt">
     <button class="small stop" id="aDel">削除</button>
     <button class="small" id="aCancel">キャンセル</button>
@@ -145,36 +149,69 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
+<!-- カスタマイズ -->
+<dialog id="cdlg"><div class="pad">
+  <div style="font-weight:700">項目をカスタマイズ</div>
+  <div class="mini mt">1行に1項目。アイコンを付けたい行は「アイコン,ラベル」と書きます。</div>
+
+  <label>このログの名前</label>
+  <input id="cTitle" placeholder="場面ログ">
+
+  <label>自分の反応（上から順に記録されます）</label>
+  <textarea id="cLevels"></textarea>
+
+  <label>相手</label>
+  <textarea id="cWho"></textarea>
+
+  <label>場面</label>
+  <textarea id="cTrig"></textarea>
+
+  <label>睡眠メモのタグ（3つめに wake と書いた行は排他選択）</label>
+  <textarea id="cTags"></textarea>
+
+  <div class="center mini" id="cMsg"></div>
+  <div class="row mt">
+    <button class="small" id="cReset">初期値に戻す</button>
+    <button class="small" id="cCancel">キャンセル</button>
+    <button class="small okb" id="cSave" style="flex:2">保存</button>
+  </div>
+</div></dialog>
+
 <script>
-/* ===== 項目定義（自由に増減できます） ===== */
-const TAGS=[
-  {k:'sex',   icon:'❤️',label:'sex'},
-  {k:'wake2', icon:'◎', label:'寝起き◎', group:'wake'},
-  {k:'wake1', icon:'○', label:'寝起き○', group:'wake'},
-  {k:'wake0', icon:'△', label:'寝起き△', group:'wake'},
-  {k:'awake', icon:'☾', label:'中途覚醒'},
-  {k:'alc',   icon:'🍺',label:'飲酒'},
-  {k:'sick',  icon:'🤒',label:'体調不良'},
-  {k:'late',  icon:'📱',label:'夜更かし'},
-  {k:'dream', icon:'💭',label:'夢'},
-];
-const ANGER=[
-  {lv:0,icon:'🌱',label:'気づいて流せた'},
-  {lv:1,icon:'😶',label:'不機嫌な態度・無言'},
-  {lv:2,icon:'🗯️',label:'嫌味・きつい言葉'},
-  {lv:3,icon:'📢',label:'大きな声・怒鳴った'},
-  {lv:4,icon:'💥',label:'物に当たった'},
-  {lv:5,icon:'✋',label:'手が出た'},
-];
-const WHO=['子','配偶者','自分','仕事','その他'];
-const TRIG=['寝不足','疲労','空腹','時間に追われた','散らかり','ぐずり・反抗','言うことを聞かない','スマホ','仕事'];
+/* ===== 初期値（アプリ内の「項目をカスタマイズ」で変更できます） ===== */
+const DEFAULTS={
+  title:'場面ログ',
+  levels:[
+    {icon:'🌱',label:'落ち着いて対応できた'},
+    {icon:'🙂',label:'ふつうに対応した'},
+    {icon:'😶',label:'不機嫌な態度・無言'},
+    {icon:'🗯️',label:'きつい言い方・嫌味'},
+    {icon:'📢',label:'大きな声を出した'},
+    {icon:'✋',label:'手が出た・物に当たった'}
+  ],
+  who:['娘','息子','配偶者','自分','仕事','その他'],
+  trig:['ピアノのレッスン','漢字の練習','宿題','靴をそろえる','片づけ',
+        '言われてすぐやらない','朝の支度','食事','寝かしつけ','ぐずり・反抗',
+        '自分が寝不足','自分が疲れている','時間に追われた'],
+  tags:[
+    {icon:'❤️',label:'sex'},
+    {icon:'◎',label:'寝起き◎',group:'wake'},
+    {icon:'○',label:'寝起き○',group:'wake'},
+    {icon:'△',label:'寝起き△',group:'wake'},
+    {icon:'☾',label:'中途覚醒'},
+    {icon:'🍺',label:'飲酒'},
+    {icon:'🤒',label:'体調不良'},
+    {icon:'📱',label:'夜更かし'},
+    {icon:'💭',label:'夢'}
+  ]
+};
 const PN_LIMIT=3;
 const DEFAULT_URL='https://script.google.com/macros/s/AKfycbzMzYjfvuHklMNup2e9O-0A42os4p80fD3noJxpfEO_ziOyDM6MKUgjRZDV3XuC3Mri/exec';
 const DEFAULT_TOKEN='sleep-well-live-well';
-/* ======================================= */
+/* ============================================================ */
 
 const $=id=>document.getElementById(id);
-function on(id,ev,fn){const el=$(id);          // 要素が無くても他の登録を止めない
+function on(id,ev,fn){const el=$(id);
   if(el) el.addEventListener(ev,fn); else console.warn('missing element:',id);}
 
 const KEY='sleeplog.v2';
@@ -203,15 +240,43 @@ const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const fmt=d=>new Date(d).toLocaleString('ja-JP',
   {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-const live=()=>db.items.filter(i=>!i.deleted);
-const activeRec=()=>live().find(i=>i.kind==='sleep'&&!i.end);
 const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
+function cfgRec(){
+  let c=db.items.find(i=>i.kind==='config');
+  if(!c){c={id:'CONFIG',kind:'config',data:clone(DEFAULTS),
+    updatedAt:new Date(0).toISOString(),synced:false};db.items.push(c);}
+  if(!c.data) c.data=clone(DEFAULTS);
+  ['title','levels','who','trig','tags'].forEach(k=>{
+    if(c.data[k]===undefined) c.data[k]=clone(DEFAULTS[k]);});
+  return c;
+}
+const C=()=>cfgRec().data;
+
+/* 旧バージョンのタグキー・反応段階をラベルへ移行（初回のみ） */
+const OLD_TAG={sex:'sex',wake2:'寝起き◎',wake1:'寝起き○',wake0:'寝起き△',
+  awake:'中途覚醒',alc:'飲酒',sick:'体調不良',late:'夜更かし',dream:'夢'};
+const OLD_LV=['気づいて流せた','不機嫌な態度・無言','嫌味・きつい言葉',
+  '大きな声・怒鳴った','物に当たった','手が出た'];
+if(!db.migrated2){
+  db.items.forEach(i=>{
+    if(i.kind==='sleep'&&Array.isArray(i.tags))
+      i.tags=i.tags.map(t=>OLD_TAG[t]||t);
+    if(i.kind==='anger'&&!i.levelKey&&typeof i.level==='number')
+      i.levelKey=OLD_LV[i.level]||'';
+  });
+  db.migrated2=true;save();
+}
+
+const live=()=>db.items.filter(i=>!i.deleted&&i.kind!=='config');
+const activeRec=()=>live().find(i=>i.kind==='sleep'&&!i.end);
 function logicalDate(type,iso){const d=new Date(iso);
   if(type==='sleep')d.setHours(d.getHours()-12);return dkey(d);}
 const mins=r=>r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):0;
 const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
 const touch=r=>{r.updatedAt=now();r.synced=false;};
-const drop=r=>{                       // 未同期なら痕跡を残さず消す
+const drop=r=>{
   if(!r)return;
   if(r.everSynced){r.deleted=true;touch(r);}
   else{const i=db.items.indexOf(r);if(i>=0)db.items.splice(i,1);}
@@ -220,6 +285,13 @@ const pnToday=()=>live().filter(i=>i.kind==='sleep'&&i.type==='pn'
   &&i.dateKey===dkey(new Date())).length;
 const pnIndexOf=r=>live().filter(x=>x.kind==='sleep'&&x.type==='pn'
   &&x.dateKey===r.dateKey&&new Date(x.start)<=new Date(r.start)).length;
+const tagDef=lb=>C().tags.find(t=>t.label===lb)||{icon:'',label:lb};
+function lvDef(r){
+  const L=C().levels;
+  let d=L.find(x=>x.label===r.levelKey);
+  if(!d&&typeof r.level==='number') d=L[r.level];
+  return d||{icon:'·',label:r.levelKey||'(未設定)'};
+}
 
 /* ---------- 計測 ---------- */
 function startRec(type){
@@ -256,6 +328,7 @@ function render(){
     on('bP','click',()=>{if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return;
       startRec('pn');});
   }
+  $('btnAng').textContent=C().title+'を記録';
   renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
   $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
@@ -263,9 +336,11 @@ function render(){
 function renderAng(){
   const t=dkey(new Date()),d7=new Date();d7.setDate(d7.getDate()-6);
   const wk=live().filter(i=>i.kind==='anger'&&i.dateKey>=dkey(d7));
-  const brk=ANGER.filter(l=>wk.some(i=>i.level===l.lv))
-    .map(l=>`${l.icon}${wk.filter(i=>i.level===l.lv).length}`).join('  ');
-  $('angSum').innerHTML=`アンガーログ　今日 ${wk.filter(i=>i.dateKey===t).length}件 / 7日 ${wk.length}件
+  const cnt={};
+  wk.forEach(r=>{const d=lvDef(r);cnt[d.icon+d.label]=(cnt[d.icon+d.label]||0)+1;});
+  const brk=C().levels.filter(l=>cnt[l.icon+l.label])
+    .map(l=>`${l.icon}${cnt[l.icon+l.label]}`).join('  ');
+  $('angSum').innerHTML=`${C().title}　今日 ${wk.filter(i=>i.dateKey===t).length}件 / 7日 ${wk.length}件
     <br><span style="font-size:15px">${brk||'—'}</span>`;
 }
 function renderHist(){
@@ -282,12 +357,12 @@ function renderHist(){
       if(r.kind==='sleep'){
         el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pnIndexOf(r):'睡眠'}</span>
           ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
-          <span class="mini">${(r.tags||[]).map(tg=>(TAGS.find(t=>t.k===tg)||{}).icon||'').join('')}${r.note?' 📝':''}</span></span>
+          <span class="mini">${(r.tags||[]).map(tg=>tagDef(tg).icon||'').join('')}${r.note?' 📝':''}</span></span>
           <span>${r.end?durText(mins(r)):''}${r.synced?'':'<span class="dot"></span>'}</span>`;
         el.addEventListener('click',()=>openEdit(r.id));
       }else{
-        const l=ANGER.find(x=>x.lv===r.level)||{icon:'?',label:'(未設定)'};
-        el.innerHTML=`<span><span class="tag t-ang">怒</span>${hhmm(new Date(r.start))}
+        const l=lvDef(r);
+        el.innerHTML=`<span><span class="tag t-ang">場面</span>${hhmm(new Date(r.start))}
           ${l.icon} ${l.label}<span class="mini"> ${r.who||''} ${(r.trig||[]).join('/')}</span></span>
           <span>${r.synced?'':'<span class="dot"></span>'}</span>`;
         el.addEventListener('click',()=>openAnger(r.id));
@@ -302,8 +377,7 @@ function renderTrash(){
   t.innerHTML=ds.length?'':'<div class="sub">ありません</div>';
   ds.forEach(r=>{
     const el=document.createElement('div');el.className='hist';
-    const nm=r.kind==='anger'?'怒 '+((ANGER.find(x=>x.lv===r.level)||{}).label||'(未設定)')
-      :(r.type==='pn'?'PN':'睡眠');
+    const nm=r.kind==='anger'?'場面 '+lvDef(r).label:(r.type==='pn'?'PN':'睡眠');
     el.innerHTML=`<span class="mini">${fmt(r.start)}　${nm}</span>`;
     const b=document.createElement('button');b.className='small';b.textContent='復元';
     b.style.flex='0 0 auto';
@@ -317,7 +391,7 @@ function tick(){const a=activeRec(),el=$('tmr');if(!a||!el)return;
 setInterval(tick,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();sync(true);}});
 
-/* ---------- 睡眠 / PN 編集（変更は即反映） ---------- */
+/* ---------- 睡眠 / PN 編集 ---------- */
 let cur=null;
 function openEdit(id){
   cur=db.items.find(i=>i.id===id); if(!cur)return;
@@ -334,17 +408,20 @@ function drawDlg(){
 }
 function drawTags(){
   const c=$('dlgTags'); c.innerHTML='';
-  TAGS.forEach(t=>{
+  const defs=C().tags.slice();
+  (cur.tags||[]).forEach(lb=>{                       // 定義から消えたタグも表示
+    if(!defs.some(t=>t.label===lb)) defs.push({icon:'',label:lb});});
+  defs.forEach(t=>{
     const b=document.createElement('button');
-    b.className='chip'+((cur.tags||[]).includes(t.k)?' on':'');
+    b.className='chip'+((cur.tags||[]).includes(t.label)?' on':'');
     b.innerHTML=`${t.icon} ${t.label}`;
     b.addEventListener('click',()=>{
       cur.tags=cur.tags||[];
-      const isOn=cur.tags.includes(t.k);
+      const isOn=cur.tags.includes(t.label);
       cur.tags=t.group
-        ? cur.tags.filter(k=>(TAGS.find(x=>x.k===k)||{}).group!==t.group)  // 同グループは排他
-        : cur.tags.filter(k=>k!==t.k);                                     // それ以外は自分を外す
-      if(!isOn) cur.tags.push(t.k);
+        ? cur.tags.filter(k=>tagDef(k).group!==t.group)   // 同グループは排他
+        : cur.tags.filter(k=>k!==t.label);                // それ以外は自分を外す
+      if(!isOn) cur.tags.push(t.label);
       touch(cur);save();drawTags();renderHist();
     });
     c.appendChild(b);
@@ -384,37 +461,46 @@ on('dlg','close',()=>{
     if(v!==(cur.note||'')){cur.note=v;touch(cur);save();}}
   cur=null;render();sync(true);});
 
-/* ---------- アンガーログ（保存を押すまで確定しない） ---------- */
+/* ---------- 場面ログ（保存を押すまで確定しない） ---------- */
 let acur=null,aNew=false;
 function openAnger(id){
   if(id){const src=db.items.find(i=>i.id===id); if(!src)return;
     acur=clone(src); aNew=false;}
   else{const s=now();
     acur={id:uid(),kind:'anger',start:s,end:s,dateKey:dkey(new Date()),
-      level:null,who:'',trig:[],note:'',updatedAt:s,synced:false};
+      level:null,levelKey:'',who:'',trig:[],note:'',updatedAt:s,synced:false};
     aNew=true;}
+  $('aHead').textContent=C().title;
   $('aTime').textContent=fmt(acur.start);
   $('aNote').value=acur.note||'';
   $('aMsg').textContent='';
   $('aDel').style.display=aNew?'none':'';
+  $('aSame').style.display=aNew?'':'none';
   drawAnger();$('adlg').showModal();
 }
 function drawAnger(){
   const lv=$('aLv');lv.innerHTML='';
-  ANGER.forEach(l=>{
+  C().levels.forEach((l,i)=>{
     const b=document.createElement('button');
-    b.className='lvbtn'+(acur.level===l.lv?' on':'');
+    b.className='lvbtn'+(acur.levelKey===l.label?' on':'');
     b.innerHTML=`<span class="lvic">${l.icon}</span><span>${l.label}</span>`;
-    b.addEventListener('click',()=>{acur.level=(acur.level===l.lv?null:l.lv);drawAnger();});
+    b.addEventListener('click',()=>{
+      if(acur.levelKey===l.label){acur.levelKey='';acur.level=null;}
+      else{acur.levelKey=l.label;acur.level=i;}
+      drawAnger();});
     lv.appendChild(b);
   });
   const w=$('aWho');w.innerHTML='';
-  WHO.forEach(x=>{const b=document.createElement('button');
+  const whos=C().who.slice();
+  if(acur.who&&!whos.includes(acur.who)) whos.push(acur.who);
+  whos.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+(acur.who===x?' on a':'');b.textContent=x;
     b.addEventListener('click',()=>{acur.who=(acur.who===x?'':x);drawAnger();});
     w.appendChild(b);});
   const g=$('aTrig');g.innerHTML='';
-  TRIG.forEach(x=>{const b=document.createElement('button');
+  const trigs=C().trig.slice();
+  (acur.trig||[]).forEach(x=>{if(!trigs.includes(x))trigs.push(x);});
+  trigs.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+((acur.trig||[]).includes(x)?' on a':'');b.textContent=x;
     b.addEventListener('click',()=>{acur.trig=acur.trig||[];
       acur.trig=acur.trig.includes(x)?acur.trig.filter(y=>y!==x):acur.trig.concat(x);
@@ -424,10 +510,16 @@ function drawAnger(){
 function closeAnger(){acur=null;$('adlg').close();render();sync(true);}
 on('btnAng','click',()=>openAnger(null));
 on('aCancel','click',closeAnger);
-on('adlg','cancel',e=>{e.preventDefault();closeAnger();});   // 端末の戻るボタン
+on('adlg','cancel',e=>{e.preventDefault();closeAnger();});
+on('aSame','click',()=>{
+  const prev=live().filter(i=>i.kind==='anger')
+    .sort((a,b)=>new Date(a.start)-new Date(b.start)).pop();
+  if(!prev){$('aMsg').textContent='前回の記録がありません';return;}
+  acur.who=prev.who||'';acur.trig=(prev.trig||[]).slice();drawAnger();
+});
 on('aSave','click',()=>{
   if(!acur)return;
-  if(acur.level===null){$('aMsg').textContent='「どうなった」を選んでください';return;}
+  if(!acur.levelKey){$('aMsg').textContent='「自分の反応」を選んでください';return;}
   acur.note=$('aNote').value;
   if(aNew){acur.updatedAt=now();acur.synced=false;db.items.push(acur);}
   else{const t=db.items.find(i=>i.id===acur.id);
@@ -441,16 +533,59 @@ on('aDel','click',()=>{
   closeAnger();
 });
 
+/* ---------- カスタマイズ ---------- */
+const toLines=arr=>arr.map(x=>typeof x==='string'?x
+  :[x.icon||'',x.label||''].concat(x.group?[x.group]:[]).join(',')).join('\n');
+const parsePlain=s=>s.split('\n').map(x=>x.trim()).filter(Boolean);
+function parseIcon(s,withGroup){
+  return s.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{
+    const p=line.split(',').map(y=>y.trim());
+    const o=p.length>1?{icon:p[0],label:p[1]}:{icon:'',label:p[0]};
+    if(withGroup&&p[2]) o.group=p[2];
+    return o;
+  }).filter(o=>o.label);
+}
+function openCfg(){
+  const c=C();
+  $('cTitle').value=c.title;
+  $('cLevels').value=toLines(c.levels);
+  $('cWho').value=toLines(c.who);
+  $('cTrig').value=toLines(c.trig);
+  $('cTags').value=toLines(c.tags);
+  $('cMsg').textContent='';
+  $('cdlg').showModal();
+}
+on('btnCfg','click',openCfg);
+on('cCancel','click',()=>$('cdlg').close());
+on('cReset','click',()=>{
+  if(!confirm('項目を初期値に戻しますか？（記録は消えません）'))return;
+  $('cTitle').value=DEFAULTS.title;
+  $('cLevels').value=toLines(DEFAULTS.levels);
+  $('cWho').value=toLines(DEFAULTS.who);
+  $('cTrig').value=toLines(DEFAULTS.trig);
+  $('cTags').value=toLines(DEFAULTS.tags);
+});
+on('cSave','click',()=>{
+  const lv=parseIcon($('cLevels').value,false);
+  const tg=parseIcon($('cTags').value,true);
+  if(!lv.length){$('cMsg').textContent='「自分の反応」は1つ以上必要です';return;}
+  const rec=cfgRec();
+  rec.data={title:$('cTitle').value.trim()||DEFAULTS.title,
+    levels:lv,who:parsePlain($('cWho').value),
+    trig:parsePlain($('cTrig').value),tags:tg};
+  touch(rec);save();$('cdlg').close();render();sync(true);
+});
+
 /* ---------- 同期 ---------- */
 function forPush(i){
   const o=Object.assign({},i); delete o.synced; delete o.everSynced;
   if(i.kind==='sleep'){
     o.minutes=mins(i);
     o.pnIndex=i.type==='pn'?pnIndexOf(i):'';
-    o.tagText=(i.tags||[]).map(k=>{const t=TAGS.find(x=>x.k===k);return t?t.icon+t.label:k;}).join(' ');
-  }else{
-    const l=ANGER.find(x=>x.lv===i.level);
-    o.levelText=l?l.icon+' '+l.label:'';
+    o.tagText=(i.tags||[]).map(k=>{const t=tagDef(k);return (t.icon||'')+t.label;}).join(' ');
+  }else if(i.kind==='anger'){
+    const l=lvDef(i);
+    o.levelText=(l.icon||'')+' '+l.label;
   }
   return o;
 }
@@ -491,6 +626,7 @@ on('btnSave','click',()=>{
 $('cfgUrl').value=db.settings.url;
 $('cfgToken').value=db.settings.token;
 
+cfgRec();save();
 const q=new URLSearchParams(location.search).get('a');
 if((q==='sleep'||q==='pn')&&!activeRec()) startRec(q);
 if(q==='anger') openAnger(null);

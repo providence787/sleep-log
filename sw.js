@@ -1,4 +1,4 @@
-const V='sleeplog-2026-09-15c';   // 更新したらこの文字列を必ず変える
+const V='sleeplog-2026-09-17a';   // 更新したらこの文字列を必ず変える
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const DOC_TIMEOUT=3000;           // これを超えたらキャッシュ版で表示
 
