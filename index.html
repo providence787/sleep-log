@@ -18,6 +18,7 @@ header{display:flex;justify-content:space-between;align-items:baseline;padding:6
 h1{font-size:16px;margin:0;letter-spacing:.04em}
 .sub{color:var(--sub);font-size:12px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
+.warn{background:#3a2f12;color:#ffd68a;border-radius:12px;padding:12px;font-size:13px;margin-bottom:12px;line-height:1.5}
 button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;background:#2a3040}
 .big{width:100%;font-size:21px;font-weight:700;padding:26px 14px;margin-bottom:10px;line-height:1.3}
 .sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}
@@ -26,6 +27,7 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
 .center{text-align:center}.mt{margin-top:10px}
 .row{display:flex;gap:6px}.row>*{flex:1}
 .small{font-size:13px;padding:9px}
+.seg.on{background:#2f4fd8}
 .adj{font-size:13px;padding:10px 0;background:#2a3040;touch-action:none;user-select:none}
 .hist{display:flex;justify-content:space-between;align-items:center;gap:8px;
       padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px}
@@ -49,17 +51,30 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
       border-radius:999px;padding:9px 13px;font-size:13px}
 .chip.on{background:#2f4fd8;border-color:#5b7cfa;color:#fff}
 .chip.on.a{background:#3d6b85;border-color:#6d8fa8}
+.chip.on.auto{background:#26305c;border-style:dashed;border-color:#8aa0ff}
 .mini{font-size:12px;color:var(--sub)}
 .lvbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
        background:#222836;border:1px solid #2f3646;margin-bottom:6px;padding:13px}
 .lvbtn.on{background:#3d6b85;border-color:#6d8fa8}
 .lvic{font-size:19px;width:26px;text-align:center}
+.drow{padding:10px 0;border-bottom:1px solid var(--line)}
+.dlab{font-size:14px;margin-bottom:7px}
+.num{margin:0}
 </style>
 </head>
 <body>
 <header><h1 id="appTitle">SLEEP LOG</h1><div class="sub" id="today"></div></header>
 
+<div class="warn" id="warn" style="display:none">この端末は同期の設定がまだです。下の「設定」に URL とトークンを入れるか、Mac で作ったセットアップリンクを開いてください。</div>
+
 <div class="card" id="main"></div>
+
+<div class="card">
+  <div class="row" style="align-items:center">
+    <div class="sub" id="daySum" style="flex:2"></div>
+    <button class="small okb" id="btnDay" style="flex:1">日次チェック</button>
+  </div>
+</div>
 
 <div class="card">
   <div class="row" style="align-items:center">
@@ -82,10 +97,13 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <summary>設定</summary>
   <div class="card mt">
     <label>GAS ウェブアプリ URL（/exec）</label>
-    <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
     <label>トークン</label>
-    <input id="cfgToken">
-    <button class="small okb" id="btnSave" style="width:100%">保存して同期</button>
+    <input id="cfgToken" autocomplete="off">
+    <button class="small" id="btnGen" style="width:100%">ランダムなトークンを作る</button>
+    <button class="small okb mt" id="btnSave" style="width:100%">保存して同期</button>
+    <button class="small mt" id="btnLink" style="width:100%">セットアップリンクをコピー（他の端末用）</button>
+    <input id="linkOut" class="mt" readonly style="display:none">
     <div class="center mini mt" id="cfgMsg"></div>
   </div>
 </details>
@@ -135,6 +153,20 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 <!-- 場面ログ -->
 <dialog id="adlg"><div class="pad">
   <div style="font-weight:700"><span id="aHead"></span> <span class="mini" id="aTime"></span></div>
+
+  <label>いつ（思い出して記録するときは直す）<span id="aTimeNote" style="color:#ffcf8a"></span></label>
+  <div class="row" style="align-items:center">
+    <button class="small seg" id="aDayT">今日</button>
+    <button class="small seg" id="aDayY">昨日</button>
+    <input type="time" id="aInT">
+  </div>
+  <div class="row mt"><button class="adj" data-f="a" data-n="-60">−60</button>
+    <button class="adj" data-f="a" data-n="-10">−10</button>
+    <button class="adj" data-f="a" data-n="-1">−1</button>
+    <button class="adj" data-f="a" data-n="1">＋1</button>
+    <button class="adj" data-f="a" data-n="10">＋10</button>
+    <button class="adj" data-f="a" data-n="60">＋60</button></div>
+
   <label>自分の反応（必須・もう一度タップで解除）</label>
   <div id="aLv"></div>
   <label>相手</label><div class="chips" id="aWho"></div>
@@ -149,10 +181,33 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
+<!-- 日次チェック（タップで即時反映） -->
+<dialog id="ddlg"><div class="pad">
+  <div style="font-weight:700">日次チェック <span class="mini" id="dDate"></span></div>
+  <div class="row mt">
+    <button class="small seg" id="dToday">今日</button>
+    <button class="small seg" id="dYest">昨日</button>
+  </div>
+  <div id="dList"></div>
+
+  <label>前日の Brave（デジタルウェルビーイング）<span id="dBraveDay"></span></label>
+  <div class="row" style="align-items:center">
+    <input type="number" class="num" id="dBn" inputmode="numeric" placeholder="回数">
+    <span class="mini" style="flex:0 0 auto">回</span>
+    <input type="number" class="num" id="dBh" inputmode="numeric" placeholder="時間">
+    <span class="mini" style="flex:0 0 auto">時間</span>
+    <input type="number" class="num" id="dBm" inputmode="numeric" placeholder="分">
+    <span class="mini" style="flex:0 0 auto">分</span>
+  </div>
+
+  <div class="center mini mt" id="dSum"></div>
+  <button class="small mt" id="dClose" style="width:100%">閉じる</button>
+</div></dialog>
+
 <!-- カスタマイズ -->
 <dialog id="cdlg"><div class="pad">
   <div style="font-weight:700">項目をカスタマイズ</div>
-  <div class="mini mt">1行に1項目。アイコンを付けたい行は「アイコン,ラベル」と書きます。</div>
+  <div class="mini mt">1行に1項目。アイコンを付けたい行は「アイコン,ラベル」。行頭に # を付けると非表示（データは残ります）。</div>
 
   <label>このログの名前</label>
   <input id="cTitle" placeholder="場面ログ">
@@ -169,7 +224,21 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <label>睡眠メモのタグ（3つめに wake と書いた行は排他選択）</label>
   <textarea id="cTags"></textarea>
 
-  <div class="center mini" id="cMsg"></div>
+  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）</label>
+  <textarea id="cDaily"></textarea>
+
+  <label>自動判定の基準</label>
+  <div class="row" style="align-items:center">
+    <span class="mini" style="flex:0 0 auto">起床目標</span><input type="time" id="cWake">
+    <span class="mini" style="flex:0 0 auto">±</span><input type="number" class="num" id="cTol" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">分</span>
+  </div>
+  <div class="row mt" style="align-items:center">
+    <span class="mini" style="flex:0 0 auto">排便→退出 上限</span><input type="number" class="num" id="cToilet" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">分</span>
+  </div>
+
+  <div class="center mini mt" id="cMsg"></div>
   <div class="row mt">
     <button class="small" id="cReset">初期値に戻す</button>
     <button class="small" id="cCancel">キャンセル</button>
@@ -178,23 +247,19 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 </div></dialog>
 
 <script>
-/* ===== 初期値（アプリ内の「項目をカスタマイズ」で変更できます） ===== */
+/* ===== 初期値（実際の項目は config シートと同期。ここは一般的な内容のみ） ===== */
 const DEFAULTS={
   title:'場面ログ',
   levels:[
     {icon:'🌱',label:'落ち着いて対応できた'},
     {icon:'🙂',label:'ふつうに対応した'},
     {icon:'😶',label:'不機嫌な態度・無言'},
-    {icon:'🗯️',label:'きつい言い方・嫌味'},
-    {icon:'📢',label:'大きな声を出した'},
-    {icon:'✋',label:'手が出た・物に当たった'}
+    {icon:'🗯️',label:'きつい言い方'},
+    {icon:'📢',label:'大きな声を出した'}
   ],
-  who:['凛太郎','花玲','花希','花和','静香','その他'],
-  trig:['漢字の練習','ピアノのレッスン','漢字の練習','靴をそろえる','片づけ',
-        '言われてすぐやらない','朝の支度','食事','寝かしつけ','ぐずり・反抗',
-        '自分が寝不足','自分が疲れている','時間に追われた'],
+  who:['家族','職場','その他'],
+  trig:['朝の支度','食事','片づけ','寝かしつけ','自分が寝不足','自分が疲れている','時間に追われた'],
   tags:[
-    {icon:'❤️',label:'sex'},
     {icon:'◎',label:'寝起き◎',group:'wake'},
     {icon:'○',label:'寝起き○',group:'wake'},
     {icon:'△',label:'寝起き△',group:'wake'},
@@ -203,16 +268,28 @@ const DEFAULTS={
     {icon:'🤒',label:'体調不良'},
     {icon:'📱',label:'夜更かし'},
     {icon:'💭',label:'夢'}
-  ]
+  ],
+  daily:[
+    {icon:'⏰',label:'起床 3:30±10分',opt:'auto:wake'},
+    {icon:'📌',label:'Padlet 投稿',opt:'auto:padlet'},
+    {icon:'🚽',label:'排便→退出 40分以内',opt:'auto:toilet'},
+    {icon:'🃏',label:'Anki 金フレ 10枚',opt:'x3'},
+    {icon:'🃏',label:'Anki Distinction 10枚',opt:'x3'},
+    {icon:'✍️',label:'聖書模写・黙想 A5 1枚'},
+    {icon:'🙏',label:'Obsidian 朝の祈り（音声入力）'}
+  ],
+  rt:{wake:'03:30',tol:10,toilet:40}
 };
 const PN_LIMIT=3;
-const DEFAULT_URL='https://script.google.com/macros/s/AKfycbzMzYjfvuHklMNup2e9O-0A42os4p80fD3noJxpfEO_ziOyDM6MKUgjRZDV3XuC3Mri/exec';
-const DEFAULT_TOKEN='sleep-well-live-well';
+const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
+const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
+const DEFAULT_TOKEN='...';
 /* ============================================================ */
 
 const $=id=>document.getElementById(id);
 function on(id,ev,fn){const el=$(id);
   if(el) el.addEventListener(ev,fn); else console.warn('missing element:',id);}
+const isReal=v=>!!v&&v!=='...';
 
 const KEY='sleeplog.v2';
 const blank=()=>({items:[],settings:{url:'',token:''}});
@@ -229,8 +306,8 @@ if(!db){
 }
 if(!db.items) db.items=[];
 if(!db.settings) db.settings={url:'',token:''};
-if(!db.settings.url)   db.settings.url=DEFAULT_URL;
-if(!db.settings.token) db.settings.token=DEFAULT_TOKEN;
+if(!db.settings.url&&isReal(DEFAULT_URL))     db.settings.url=DEFAULT_URL;
+if(!db.settings.token&&isReal(DEFAULT_TOKEN)) db.settings.token=DEFAULT_TOKEN;
 
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
 const now=()=>new Date().toISOString();
@@ -241,15 +318,20 @@ const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const fmt=d=>new Date(d).toLocaleString('ja-JP',
   {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const clone=o=>JSON.parse(JSON.stringify(o));
+const dayKeyOf=d=>{const x=new Date(d);x.setHours(x.getHours()-DAY_CUT);return dkey(x);};
+const shiftKey=(k,n)=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dkey(d);};
+const isOffStr=s=>typeof s==='string'&&s.startsWith('#');
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
+const CFG_KEYS=['title','levels','who','trig','tags','daily','rt'];
 function cfgRec(){
   let c=db.items.find(i=>i.kind==='config');
   if(!c){c={id:'CONFIG',kind:'config',data:clone(DEFAULTS),
     updatedAt:new Date(0).toISOString(),synced:false};db.items.push(c);}
   if(!c.data) c.data=clone(DEFAULTS);
-  ['title','levels','who','trig','tags'].forEach(k=>{
-    if(c.data[k]===undefined) c.data[k]=clone(DEFAULTS[k]);});
+  CFG_KEYS.forEach(k=>{if(c.data[k]===undefined) c.data[k]=clone(DEFAULTS[k]);});
+  ['wake','tol','toilet'].forEach(k=>{
+    if(c.data.rt[k]===undefined) c.data.rt[k]=DEFAULTS.rt[k];});
   return c;
 }
 const C=()=>cfgRec().data;
@@ -310,6 +392,7 @@ function stopRec(){
 function render(){
   const m=$('main'),a=activeRec(),pn=pnToday();
   $('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
+  $('warn').style.display=(db.settings.url&&db.settings.token)?'none':'';
   if(a){
     m.innerHTML=`<div class="center sub">${a.type==='pn'?'パワーナップ':'睡眠'}中　開始 ${hhmm(new Date(a.start))}</div>
       <div class="timer" id="tmr">00:00:00</div>
@@ -329,9 +412,14 @@ function render(){
       startRec('pn');});
   }
   $('btnAng').textContent=C().title+'を記録';
-  renderAng();renderHist();renderTrash();
+  renderDaySum();renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
   $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
+}
+function renderDaySum(){
+  const T=dayKeyOf(new Date()),e=dailyEval(T),y=dailyEval(shiftKey(T,-1));
+  $('daySum').innerHTML=`日次チェック　今日 ${e.done}/${e.total}
+    <br><span class="mini">昨日 ${y.done}/${y.total}（未記入 ${y.rows.length-y.filled}）</span>`;
 }
 function renderAng(){
   const t=dkey(new Date()),d7=new Date();d7.setDate(d7.getDate()-6);
@@ -344,10 +432,11 @@ function renderAng(){
     <br><span style="font-size:15px">${brk||'—'}</span>`;
 }
 function renderHist(){
-  const keys=[...new Set(live().map(i=>i.dateKey))].sort().reverse().slice(0,7);
+  const hk=live().filter(i=>i.kind==='sleep'||i.kind==='anger');
+  const keys=[...new Set(hk.map(i=>i.dateKey))].sort().reverse().slice(0,7);
   const h=$('hist'); h.innerHTML=keys.length?'':'<div class="sub">—</div>';
   keys.forEach(k=>{
-    const rs=live().filter(i=>i.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
+    const rs=hk.filter(i=>i.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
     const tot=rs.filter(i=>i.kind==='sleep').reduce((s,r)=>s+mins(r),0);
     h.insertAdjacentHTML('beforeend',
       `<div class="hist" style="border-bottom:0;padding-bottom:2px">
@@ -371,14 +460,19 @@ function renderHist(){
     });
   });
 }
+function kindName(r){
+  if(r.kind==='anger') return '場面 '+lvDef(r).label;
+  if(r.kind==='sleep') return r.type==='pn'?'PN':'睡眠';
+  if(r.kind==='daily') return '日次 '+(r.dateKey||'');
+  return r.kind||'?';
+}
 function renderTrash(){
   const t=$('trash'),ds=db.items.filter(i=>i.deleted)
-    .sort((a,b)=>new Date(b.start)-new Date(a.start)).slice(0,30);
+    .sort((a,b)=>new Date(b.start||0)-new Date(a.start||0)).slice(0,30);
   t.innerHTML=ds.length?'':'<div class="sub">ありません</div>';
   ds.forEach(r=>{
     const el=document.createElement('div');el.className='hist';
-    const nm=r.kind==='anger'?'場面 '+lvDef(r).label:(r.type==='pn'?'PN':'睡眠');
-    el.innerHTML=`<span class="mini">${fmt(r.start)}　${nm}</span>`;
+    el.innerHTML=`<span class="mini">${r.start?fmt(r.start):''}　${kindName(r)}</span>`;
     const b=document.createElement('button');b.className='small';b.textContent='復元';
     b.style.flex='0 0 auto';
     b.addEventListener('click',()=>{r.deleted=false;touch(r);save();render();sync(true);});
@@ -391,7 +485,7 @@ function tick(){const a=activeRec(),el=$('tmr');if(!a||!el)return;
 setInterval(tick,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();sync(true);}});
 
-/* ---------- 睡眠 / PN 編集 ---------- */
+/* ---------- 睡眠 / PN 編集（即時反映） ---------- */
 let cur=null;
 function openEdit(id){
   cur=db.items.find(i=>i.id===id); if(!cur)return;
@@ -408,13 +502,13 @@ function drawDlg(){
 }
 function drawTags(){
   const c=$('dlgTags'); c.innerHTML='';
-  const defs=C().tags.slice();
-  (cur.tags||[]).forEach(lb=>{                       // 定義から消えたタグも表示
-    if(!defs.some(t=>t.label===lb)) defs.push({icon:'',label:lb});});
+  const defs=C().tags.filter(t=>!t.off);
+  (cur.tags||[]).forEach(lb=>{                       // 非表示・定義から消えたタグも表示
+    if(!defs.some(t=>t.label===lb)) defs.push(tagDef(lb));});
   defs.forEach(t=>{
     const b=document.createElement('button');
     b.className='chip'+((cur.tags||[]).includes(t.label)?' on':'');
-    b.innerHTML=`${t.icon} ${t.label}`;
+    b.innerHTML=`${t.icon||''} ${t.label}`;
     b.addEventListener('click',()=>{
       cur.tags=cur.tags||[];
       const isOn=cur.tags.includes(t.label);
@@ -434,13 +528,18 @@ function shift(f,n){
   else cur.end=t.toISOString();
   touch(cur);drawDlg();
 }
+/* ±ボタン（睡眠: data-f=s/e、場面: data-f=a）長押しで連続 */
 document.querySelectorAll('.adj').forEach(b=>{
   const f=b.dataset.f,n=+b.dataset.n; let t1,t2;
-  const go=()=>{if(cur)shift(f,n);};
+  const go=()=>{
+    if(f==='a'){if(acur)shiftA(n);}
+    else if(cur)shift(f,n);
+  };
   b.addEventListener('pointerdown',e=>{e.preventDefault();go();
     t1=setTimeout(()=>{t2=setInterval(go,80)},400);});
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>
-    b.addEventListener(ev,()=>{clearTimeout(t1);clearInterval(t2);save();renderHist();}));
+    b.addEventListener(ev,()=>{clearTimeout(t1);clearInterval(t2);
+      if(f!=='a'&&cur){save();renderHist();}}));
 });
 function setTime(f,v){
   if(!v||!cur)return; const [H,M]=v.split(':').map(Number);
@@ -467,23 +566,47 @@ function openAnger(id){
   if(id){const src=db.items.find(i=>i.id===id); if(!src)return;
     acur=clone(src); aNew=false;}
   else{const s=now();
-    acur={id:uid(),kind:'anger',start:s,end:s,dateKey:dkey(new Date()),
+    acur={id:uid(),kind:'anger',start:s,end:s,loggedAt:s,dateKey:dkey(new Date()),
       level:null,levelKey:'',who:'',trig:[],note:'',updatedAt:s,synced:false};
     aNew=true;}
   $('aHead').textContent=C().title;
-  $('aTime').textContent=fmt(acur.start);
   $('aNote').value=acur.note||'';
   $('aMsg').textContent='';
   $('aDel').style.display=aNew?'none':'';
   $('aSame').style.display=aNew?'':'none';
-  drawAnger();$('adlg').showModal();
+  drawATime();drawAnger();$('adlg').showModal();
 }
+function drawATime(){
+  if(!acur)return;
+  const d=new Date(acur.start),t=dkey(new Date()),y=shiftKey(t,-1),k=dkey(d);
+  $('aTime').textContent=fmt(acur.start);
+  $('aInT').value=hhmm(d);
+  $('aDayT').className='small seg'+(k===t?' on':'');
+  $('aDayY').className='small seg'+(k===y?' on':'');
+  $('aTimeNote').textContent=d>new Date()?'　※未来の時刻です':'';
+}
+function setAStart(d){
+  acur.start=d.toISOString();acur.end=acur.start;acur.dateKey=dkey(d);drawATime();}
+function shiftA(n){const d=new Date(acur.start);d.setMinutes(d.getMinutes()+n);setAStart(d);}
+function setADay(off){
+  if(!acur)return;
+  const d=new Date(acur.start),t=new Date();t.setDate(t.getDate()+off);
+  d.setFullYear(t.getFullYear(),t.getMonth(),t.getDate());setAStart(d);
+}
+on('aDayT','click',()=>setADay(0));
+on('aDayY','click',()=>setADay(-1));
+on('aInT','change',e=>{
+  if(!acur||!e.target.value)return;
+  const [H,M]=e.target.value.split(':').map(Number);
+  const d=new Date(acur.start);d.setHours(H,M,0,0);setAStart(d);
+});
 function drawAnger(){
   const lv=$('aLv');lv.innerHTML='';
   C().levels.forEach((l,i)=>{
+    if(l.off&&acur.levelKey!==l.label)return;
     const b=document.createElement('button');
     b.className='lvbtn'+(acur.levelKey===l.label?' on':'');
-    b.innerHTML=`<span class="lvic">${l.icon}</span><span>${l.label}</span>`;
+    b.innerHTML=`<span class="lvic">${l.icon||''}</span><span>${l.label}</span>`;
     b.addEventListener('click',()=>{
       if(acur.levelKey===l.label){acur.levelKey='';acur.level=null;}
       else{acur.levelKey=l.label;acur.level=i;}
@@ -491,14 +614,14 @@ function drawAnger(){
     lv.appendChild(b);
   });
   const w=$('aWho');w.innerHTML='';
-  const whos=C().who.slice();
+  const whos=C().who.filter(x=>!isOffStr(x));
   if(acur.who&&!whos.includes(acur.who)) whos.push(acur.who);
   whos.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+(acur.who===x?' on a':'');b.textContent=x;
     b.addEventListener('click',()=>{acur.who=(acur.who===x?'':x);drawAnger();});
     w.appendChild(b);});
   const g=$('aTrig');g.innerHTML='';
-  const trigs=C().trig.slice();
+  const trigs=[...new Set(C().trig.filter(x=>!isOffStr(x)))];
   (acur.trig||[]).forEach(x=>{if(!trigs.includes(x))trigs.push(x);});
   trigs.forEach(x=>{const b=document.createElement('button');
     b.className='chip'+((acur.trig||[]).includes(x)?' on a':'');b.textContent=x;
@@ -533,46 +656,194 @@ on('aDel','click',()=>{
   closeAnger();
 });
 
+/* ---------- 日次チェック（タップで即時反映） ---------- */
+const dayId=k=>'DAY-'+k.replace(/-/g,'');
+function dailyRec(k,create){
+  let r=db.items.find(i=>i.kind==='daily'&&i.id===dayId(k));
+  if(!r&&create){
+    r={id:dayId(k),kind:'daily',dateKey:k,start:new Date(k+'T12:00:00').toISOString(),
+       end:null,checks:{},ovr:{},auto:{},brave:null,updatedAt:now(),synced:false};
+    db.items.push(r);
+  }
+  if(r&&create&&r.deleted) r.deleted=false;
+  return r;
+}
+const dItems=()=>C().daily.filter(x=>!x.off);
+function dType(it){
+  const o=it.opt||'';
+  if(o.startsWith('auto:')) return {t:'auto',key:o.slice(5)};
+  const m=o.match(/^x(\d+)$/); if(m) return {t:'count',n:Math.max(1,+m[1])};
+  return {t:'tri'};
+}
+function autoVal(key,k){
+  const rt=C().rt;
+  if(key==='wake'){
+    const lo=new Date(k+'T02:00:00'),hi=new Date(k+'T07:00:00');
+    const s=live().filter(i=>i.kind==='sleep'&&i.type==='sleep'&&i.end
+      &&new Date(i.end)>=lo&&new Date(i.end)<=hi)
+      .sort((a,b)=>new Date(a.end)-new Date(b.end)).pop();
+    if(!s) return null;
+    const [H,M]=(rt.wake||'03:30').split(':').map(Number);
+    const t=new Date(k+'T00:00:00');t.setHours(H,M,0,0);
+    const diff=Math.round((new Date(s.end)-t)/60000);
+    return {v:Math.abs(diff)<=(+rt.tol||0)?'ok':'ng',
+      text:`${hhmm(new Date(s.end))}（${diff>=0?'+':''}${diff}分）`};
+  }
+  return null;   // padlet / toilet は第2弾（朝ルーティン）で判定
+}
+function dailyEval(k,rec){
+  if(rec===undefined) rec=dailyRec(k,false);
+  if(rec&&rec.deleted) rec=null;
+  const ch=(rec&&rec.checks)||{},ov=(rec&&rec.ovr)||{};
+  let done=0,total=0,filled=0;
+  const rows=dItems().map(it=>{
+    const ty=dType(it);let v,auto=null,manual=false;
+    if(ty.t==='auto'){
+      auto=autoVal(ty.key,k);
+      if(ov[it.label]!==undefined){v=ov[it.label];manual=true;}
+      else v=auto?auto.v:undefined;
+    }else v=ch[it.label];
+    const ok=ty.t==='count'?v===ty.n:v==='ok';
+    if(v!=='na'){total++;if(ok)done++;}
+    if(v!==undefined)filled++;
+    let mark=v===undefined?'未':v==='na'?'−':v==='ok'?'○':v==='ng'?'✕':`${v}/${ty.n}`;
+    if(ty.t==='auto'&&v!==undefined) mark+=manual?'(手)':'(自)';
+    return {it,ty,v,auto,manual,ok,mark};
+  });
+  return {rows,done,total,filled};
+}
+function snapAuto(rec){        // 自動判定の結果を記録に残す（スプレッドシート用）
+  const e=dailyEval(rec.dateKey,rec),a={};
+  e.rows.forEach(r=>{if(r.ty.t==='auto'&&r.auto)a[r.it.label]=r.auto;});
+  const changed=JSON.stringify(rec.auto||{})!==JSON.stringify(a);
+  rec.auto=a; return changed;
+}
+let dk=null;
+function openDaily(off){
+  const T=dayKeyOf(new Date());
+  dk=off?shiftKey(T,-1):T;
+  drawDaily();drawBrave();
+  if(!$('ddlg').open) $('ddlg').showModal();
+}
+function drawDaily(){
+  const T=dayKeyOf(new Date());
+  $('dDate').textContent=dk;
+  $('dToday').className='small seg'+(dk===T?' on':'');
+  $('dYest').className='small seg'+(dk===shiftKey(T,-1)?' on':'');
+  const e=dailyEval(dk),list=$('dList');list.innerHTML='';
+  e.rows.forEach(r=>{
+    const el=document.createElement('div');el.className='drow';
+    let sub='';
+    if(r.ty.t==='auto') sub=(r.auto?`自動: ${r.auto.text}`:'自動: データなし')+(r.manual?' ／ ✎手動':'');
+    el.innerHTML=`<div class="dlab">${r.it.icon||''} ${r.it.label} <span class="mini">${sub}</span></div>`;
+    const cs=document.createElement('div');cs.className='chips';
+    const opts=r.ty.t==='count'
+      ? Array.from({length:r.ty.n},(_,i)=>[i+1,`${i+1}回`]).concat([['na','−対象外']])
+      : [['ok','✓ できた'],['ng','✗ できなかった'],['na','− 対象外']];
+    opts.forEach(([val,txt])=>{
+      const b=document.createElement('button'),isOn=r.v===val;
+      b.className='chip'+(isOn?' on':'')+(isOn&&r.ty.t==='auto'&&!r.manual?' auto':'');
+      b.textContent=txt;
+      b.addEventListener('click',()=>setDaily(r,val));
+      cs.appendChild(b);
+    });
+    el.appendChild(cs);list.appendChild(el);
+  });
+  const own=dailyRec(dk,false),ob=own&&!own.deleted&&own.brave;
+  $('dSum').textContent=`達成 ${e.done}/${e.total}　未記入 ${e.rows.length-e.filled}`+
+    (ob?`　／ この日の Brave ${ob.n??'-'}回・${ob.min==null?'-':durText(ob.min)}`:'');
+}
+function setDaily(r,val){
+  const rec=dailyRec(dk,true),L=r.it.label;
+  rec.checks=rec.checks||{};rec.ovr=rec.ovr||{};
+  if(r.ty.t==='auto'){
+    if(r.manual&&rec.ovr[L]===val) delete rec.ovr[L];   // もう一度で自動に戻す
+    else rec.ovr[L]=val;
+  }else{
+    if(rec.checks[L]===val) delete rec.checks[L];        // もう一度で解除
+    else rec.checks[L]=val;
+  }
+  snapAuto(rec);touch(rec);save();drawDaily();
+}
+function drawBrave(){
+  const pk=shiftKey(dk,-1),pr=dailyRec(pk,false),b=(pr&&!pr.deleted&&pr.brave)||{};
+  $('dBraveDay').textContent=`（${pk.slice(5)} の値を入力）`;
+  $('dBn').value=b.n==null?'':b.n;
+  $('dBh').value=b.min==null?'':Math.floor(b.min/60);
+  $('dBm').value=b.min==null?'':b.min%60;
+}
+function setBrave(){
+  const pk=shiftKey(dk,-1),n=$('dBn').value,h=$('dBh').value,m=$('dBm').value;
+  const empty=n===''&&h===''&&m==='';
+  const rec=dailyRec(pk,!empty); if(!rec)return;
+  rec.brave=empty?null:{n:n===''?null:+n,
+    min:(h===''&&m==='')?null:(+h||0)*60+(+m||0)};
+  touch(rec);save();
+}
+['dBn','dBh','dBm'].forEach(id=>on(id,'input',setBrave));
+on('btnDay','click',()=>openDaily(0));
+on('dToday','click',()=>{dk=dayKeyOf(new Date());drawDaily();drawBrave();});
+on('dYest','click',()=>{dk=shiftKey(dayKeyOf(new Date()),-1);drawDaily();drawBrave();});
+on('dClose','click',()=>$('ddlg').close());
+on('ddlg','close',()=>{
+  const rec=dk&&dailyRec(dk,false);
+  if(rec&&!rec.deleted&&snapAuto(rec)){touch(rec);save();}
+  render();sync(true);
+});
+
 /* ---------- カスタマイズ ---------- */
-const toLines=arr=>arr.map(x=>typeof x==='string'?x
-  :[x.icon||'',x.label||''].concat(x.group?[x.group]:[]).join(',')).join('\n');
+const toLines=(arr,key)=>arr.map(x=>{
+  if(typeof x==='string') return x;
+  const s=[x.icon||'',x.label||''].concat(key&&x[key]?[x[key]]:[]).join(',');
+  return (x.off?'#':'')+s;
+}).join('\n');
 const parsePlain=s=>s.split('\n').map(x=>x.trim()).filter(Boolean);
-function parseIcon(s,withGroup){
+function parseIcon(s,key){
   return s.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{
+    let off=false;
+    if(line.startsWith('#')){off=true;line=line.slice(1).trim();}
     const p=line.split(',').map(y=>y.trim());
     const o=p.length>1?{icon:p[0],label:p[1]}:{icon:'',label:p[0]};
-    if(withGroup&&p[2]) o.group=p[2];
+    if(key&&p[2]) o[key]=p[2];
+    if(off) o.off=true;
     return o;
   }).filter(o=>o.label);
 }
-function openCfg(){
-  const c=C();
+function fillCfg(c){
   $('cTitle').value=c.title;
   $('cLevels').value=toLines(c.levels);
   $('cWho').value=toLines(c.who);
   $('cTrig').value=toLines(c.trig);
-  $('cTags').value=toLines(c.tags);
-  $('cMsg').textContent='';
-  $('cdlg').showModal();
+  $('cTags').value=toLines(c.tags,'group');
+  $('cDaily').value=toLines(c.daily,'opt');
+  $('cWake').value=c.rt.wake;
+  $('cTol').value=c.rt.tol;
+  $('cToilet').value=c.rt.toilet;
 }
+function openCfg(){fillCfg(C());$('cMsg').textContent='';$('cdlg').showModal();}
 on('btnCfg','click',openCfg);
 on('cCancel','click',()=>$('cdlg').close());
 on('cReset','click',()=>{
-  if(!confirm('項目を初期値に戻しますか？（記録は消えません）'))return;
-  $('cTitle').value=DEFAULTS.title;
-  $('cLevels').value=toLines(DEFAULTS.levels);
-  $('cWho').value=toLines(DEFAULTS.who);
-  $('cTrig').value=toLines(DEFAULTS.trig);
-  $('cTags').value=toLines(DEFAULTS.tags);
+  if(!confirm('項目を初期値に戻しますか？（記録は消えません。保存を押すまで確定しません）'))return;
+  fillCfg(clone(DEFAULTS));
 });
 on('cSave','click',()=>{
-  const lv=parseIcon($('cLevels').value,false);
-  const tg=parseIcon($('cTags').value,true);
-  if(!lv.length){$('cMsg').textContent='「自分の反応」は1つ以上必要です';return;}
+  const lv=parseIcon($('cLevels').value,null);
+  if(!lv.filter(x=>!x.off).length){$('cMsg').textContent='「自分の反応」は1つ以上必要です';return;}
+  const num=(id,d)=>{const v=$(id).value;return v===''||isNaN(+v)?d:+v;};
   const rec=cfgRec();
-  rec.data={title:$('cTitle').value.trim()||DEFAULTS.title,
-    levels:lv,who:parsePlain($('cWho').value),
-    trig:parsePlain($('cTrig').value),tags:tg};
+  rec.data=Object.assign({},rec.data,{           // 既存データとマージ（知らない項目を消さない）
+    title:$('cTitle').value.trim()||DEFAULTS.title,
+    levels:lv,
+    who:parsePlain($('cWho').value),
+    trig:parsePlain($('cTrig').value),
+    tags:parseIcon($('cTags').value,'group'),
+    daily:parseIcon($('cDaily').value,'opt'),
+    rt:Object.assign({},rec.data.rt,{
+      wake:$('cWake').value||DEFAULTS.rt.wake,
+      tol:num('cTol',DEFAULTS.rt.tol),
+      toilet:num('cToilet',DEFAULTS.rt.toilet)})
+  });
   touch(rec);save();$('cdlg').close();render();sync(true);
 });
 
@@ -586,6 +857,10 @@ function forPush(i){
   }else if(i.kind==='anger'){
     const l=lvDef(i);
     o.levelText=(l.icon||'')+' '+l.label;
+  }else if(i.kind==='daily'){
+    const e=dailyEval(i.dateKey,i);
+    o.doneCount=e.done;o.total=e.total;
+    o.checkText=e.rows.map(r=>r.it.label+'='+r.mark).join('|');
   }
   return o;
 }
@@ -600,7 +875,7 @@ function merge(remote){
 let busy=false;
 async function sync(silent){
   const url=db.settings.url,token=db.settings.token;
-  if(!url){if(!silent)msg('設定に GAS の URL を入れてください');return;}
+  if(!url||!token){if(!silent)msg('設定に URL とトークンを入れてください');return;}
   if(busy)return; busy=true;
   if(!silent)msg('同期中…');
   try{
@@ -622,16 +897,44 @@ on('btnSync','click',()=>sync(false));
 on('btnSave','click',()=>{
   db.settings.url=$('cfgUrl').value.trim();
   db.settings.token=$('cfgToken').value.trim();
-  save();msg('保存しました');sync(false);});
+  save();render();msg('保存しました');sync(false);});
+on('btnGen','click',()=>{
+  const a=new Uint8Array(18);crypto.getRandomValues(a);
+  $('cfgToken').value=btoa(String.fromCharCode(...a))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  msg('新しいトークンを作りました。GAS に同じ値を入れてから「保存して同期」を押してください');
+});
+on('btnLink','click',async()=>{
+  const u=$('cfgUrl').value.trim(),t=$('cfgToken').value.trim();
+  if(!u||!t){msg('URL とトークンを入れてください');return;}
+  const link=location.origin+location.pathname+'#setup='+encodeURIComponent(JSON.stringify({u,t}));
+  const o=$('linkOut');o.value=link;o.style.display='';
+  try{await navigator.clipboard.writeText(link);
+    msg('セットアップリンクをコピーしました（他人に送らないでください）');}
+  catch(e){o.select();msg('下の欄を長押ししてコピーしてください');}
+});
+
+/* ---------- 起動 ---------- */
+let setupNote='';
+if(location.hash.startsWith('#setup=')){
+  try{const o=JSON.parse(decodeURIComponent(location.hash.slice(7)));
+    if(o&&o.u&&o.t){db.settings.url=o.u;db.settings.token=o.t;save();
+      setupNote='セットアップしました。この端末に URL とトークンを保存しました';}
+  }catch(e){setupNote='セットアップリンクを読み取れませんでした';}
+}
 $('cfgUrl').value=db.settings.url;
 $('cfgToken').value=db.settings.token;
 
 cfgRec();save();
 const q=new URLSearchParams(location.search).get('a');
+history.replaceState(null,'',location.pathname);   // ?a= と #setup= を URL から消す
 if((q==='sleep'||q==='pn')&&!activeRec()) startRec(q);
+render();
 if(q==='anger') openAnger(null);
-history.replaceState(null,'',location.pathname);
-render(); sync(true);
+if(q==='daily') openDaily(0);
+if(setupNote) msg(setupNote);
+sync(true);
+if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 window.addEventListener('online',()=>sync(true));
 </script>
