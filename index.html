@@ -19,6 +19,7 @@ h1{font-size:16px;margin:0;letter-spacing:.04em}
 .sub{color:var(--sub);font-size:12px}
 .card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
 .warn{background:#3a2f12;color:#ffd68a;border-radius:12px;padding:12px;font-size:13px;margin-bottom:12px;line-height:1.5}
+.toast{background:#1f3a2c;color:#cfeedd;border-radius:12px;padding:12px;font-size:14px;margin-bottom:12px;line-height:1.5}
 button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;background:#2a3040}
 .big{width:100%;font-size:21px;font-weight:700;padding:26px 14px;margin-bottom:10px;line-height:1.3}
 .sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}
@@ -62,17 +63,20 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .step{font-size:16px;padding:15px 13px}
 .lvic{font-size:19px;width:26px;text-align:center}
 .drow{padding:10px 0;border-bottom:1px solid var(--line)}
-.dlab{font-size:14px;margin-bottom:7px}
+.dlab{font-size:14px;margin-bottom:7px;word-break:break-all}
 .num{margin:0}
 .linkbtn{display:block;text-align:center;text-decoration:none;color:#fff;background:#3b3f7a;
          border-radius:14px;padding:15px;font-size:15px;margin-top:10px}
 .rrow{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line)}
+.ibox{padding:12px 0;border-bottom:1px solid var(--line)}
+.ilink{color:#aebcff;text-decoration:none}
 </style>
 </head>
 <body>
 <header><h1 id="appTitle">SLEEP LOG</h1><div class="sub" id="today"></div></header>
 
 <div class="warn" id="warn" style="display:none">この端末は同期の設定がまだです。下の「設定」に URL とトークンを入れるか、Mac で作ったセットアップリンクを開いてください。</div>
+<div class="toast" id="toast" style="display:none"></div>
 
 <div class="card" id="main"></div>
 
@@ -80,6 +84,10 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div class="row" style="align-items:center">
     <div class="sub" id="daySum" style="flex:2"></div>
     <button class="small okb" id="btnDay" style="flex:1">日次チェック</button>
+  </div>
+  <div class="row mt">
+    <button class="small" id="btnInbox">📥 インボックス</button>
+    <button class="small" id="btnExp">📤 エクスポート</button>
   </div>
 </div>
 
@@ -224,7 +232,40 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 
   <div class="center mini mt" id="dSum"></div>
+  <button class="small mt" id="dInbox" style="width:100%">📥 インボックス</button>
   <button class="small mt" id="dClose" style="width:100%">閉じる</button>
+</div></dialog>
+
+<!-- 情報インボックス（タップで即時反映） -->
+<dialog id="idlg"><div class="pad">
+  <div style="font-weight:700">📥 情報インボックス <span class="mini" id="iCount"></span></div>
+  <div class="mini mt">見たら自分の言葉で Obsidian に書いてから評価を付けます（もう一度タップで解除）。</div>
+  <div class="row mt" style="align-items:center">
+    <input id="iAdd" class="num" placeholder="URL またはメモを追加" style="flex:3">
+    <button class="small" id="iAddBtn">追加</button>
+  </div>
+  <div id="iList" class="mt"></div>
+  <details class="mt"><summary>処理済み（直近14日）</summary><div id="iDone"></div></details>
+  <button class="small mt" id="iClose" style="width:100%">閉じる</button>
+</div></dialog>
+
+<!-- エクスポート -->
+<dialog id="edlg"><div class="pad">
+  <div style="font-weight:700">📤 エクスポート（Obsidian 用 Markdown）</div>
+  <div class="row mt">
+    <button class="small seg" id="e_today">今日</button>
+    <button class="small seg" id="e_yest">昨日</button>
+    <button class="small seg" id="e_d7">直近7日</button>
+    <button class="small seg" id="e_lastw">先週</button>
+  </div>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg)">
+    <input type="checkbox" id="eAng" style="width:auto;margin:0"> 場面ログを含める</label>
+  <textarea id="eOut" readonly style="min-height:260px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
+  <div class="center mini" id="eMsg"></div>
+  <div class="row mt">
+    <button class="small" id="eClose">閉じる</button>
+    <button class="small okb" id="eCopy" style="flex:2">コピー</button>
+  </div>
 </div></dialog>
 
 <!-- カスタマイズ -->
@@ -250,11 +291,14 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）</label>
   <textarea id="cDaily"></textarea>
 
-  <label>朝ルーティンのステップ（3つめ: wake＝起床 / bowel＝排便完了 / padlet＝Padlet / end＝終了）</label>
+  <label>朝ルーティンのステップ（3つめ: wake＝起床 / toilet＝トイレ入室 / padlet＝Padlet / end＝退出・終了）</label>
   <textarea id="cSteps"></textarea>
 
   <label>YouTube の申告（1つだけ選ぶ）</label>
   <textarea id="cYt" style="min-height:70px"></textarea>
+
+  <label>インボックスの評価（1つだけ選ぶ）</label>
+  <textarea id="cIev" style="min-height:90px"></textarea>
 
   <label>ルーティン画面のリンク（名前 / URL）</label>
   <input id="cLinkName" placeholder="聴くClay">
@@ -267,7 +311,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <span class="mini" style="flex:0 0 auto">分</span>
   </div>
   <div class="row mt" style="align-items:center">
-    <span class="mini" style="flex:0 0 auto">排便→退出 上限</span><input type="number" class="num" id="cToilet" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">トイレ滞在（入室→退出）上限</span><input type="number" class="num" id="cToilet" inputmode="numeric">
     <span class="mini" style="flex:0 0 auto">分</span>
   </div>
   <div class="row mt" style="align-items:center">
@@ -309,11 +353,18 @@ const DEFAULTS={
   daily:[
     {icon:'⏰',label:'起床 3:30±10分',opt:'auto:wake'},
     {icon:'📌',label:'Padlet 投稿',opt:'auto:padlet'},
-    {icon:'🚽',label:'排便→退出 40分以内',opt:'auto:toilet'},
+    {icon:'🚽',label:'トイレ滞在 目安以内',opt:'auto:toilet'},
     {icon:'🃏',label:'Anki 金フレ 10枚',opt:'x3'},
     {icon:'🃏',label:'Anki Distinction 10枚',opt:'x3'},
     {icon:'✍️',label:'聖書模写・黙想 A5 1枚'},
     {icon:'🙏',label:'Obsidian 朝の祈り（音声入力）'}
+  ],
+  ievals:[
+    {icon:'✍️',label:'書いた'},
+    {icon:'👀',label:'見ただけ'},
+    {icon:'⚫',label:'不要だった'},
+    {icon:'🗑',label:'見ずに削除'},
+    {icon:'🇬🇧',label:'英語で書いた',off:true}
   ],
   rt:{
     wake:'03:30',tol:10,toilet:40,maxH:6,
@@ -321,8 +372,7 @@ const DEFAULTS={
     steps:[
       {icon:'⏰',label:'起床',opt:'wake'},
       {icon:'🧴',label:'エネマ準備'},
-      {icon:'🚪',label:'トイレ入室'},
-      {icon:'🚽',label:'排便完了',opt:'bowel'},
+      {icon:'🚪',label:'トイレ入室',opt:'toilet'},
       {icon:'📖',label:'聖書読了'},
       {icon:'🟣',label:'Obsidian 記入（デボーション）'},
       {icon:'📌',label:'Padlet 投稿',opt:'padlet'},
@@ -332,7 +382,8 @@ const DEFAULTS={
       {icon:'🌱',label:'寄り道なし'},
       {icon:'🔀',label:'少し寄り道'},
       {icon:'🌀',label:'ザッピングした'}
-    ]
+    ],
+    mig3:true
   }
 };
 const PN_LIMIT=3;
@@ -347,6 +398,7 @@ function on(id,ev,fn){const el=$(id);
   if(el) el.addEventListener(ev,fn); else console.warn('missing element:',id);}
 const isReal=v=>!!v&&v!=='...';
 const isAndroid=/Android/i.test(navigator.userAgent);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const KEY='sleeplog.v2';
 const blank=()=>({items:[],settings:{url:'',token:''}});
@@ -382,7 +434,20 @@ const atTime=(base,v)=>{const [H,M]=v.split(':').map(Number);
   const d=new Date(base);d.setHours(H,M,0,0);return d.toISOString();};
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
-const CFG_KEYS=['title','levels','who','trig','tags','daily','rt'];
+const CFG_KEYS=['title','levels','who','trig','tags','daily','ievals','rt'];
+function migrateCfg(c){               // 「排便完了」廃止 → トイレ入室→退出 に統合（1回だけ）
+  const rt=c.data.rt; if(rt.mig3) return;
+  let ch=false;
+  (rt.steps||[]).forEach(s=>{if(s.opt==='bowel'){s.off=true;delete s.opt;ch=true;}});
+  if(!(rt.steps||[]).some(s=>s.opt==='toilet')){
+    const t=(rt.steps||[]).find(s=>!s.off&&/入室/.test(s.label));
+    if(t){t.opt='toilet';ch=true;}
+  }
+  (c.data.daily||[]).forEach(d=>{
+    if(d.opt==='auto:toilet'&&/排便/.test(d.label)){d.label='トイレ滞在 目安以内';ch=true;}});
+  rt.mig3=true;
+  if(ch) touch(c);
+}
 function cfgRec(){
   let c=db.items.find(i=>i.kind==='config');
   if(!c){c={id:'CONFIG',kind:'config',data:clone(DEFAULTS),
@@ -391,7 +456,8 @@ function cfgRec(){
   CFG_KEYS.forEach(k=>{if(c.data[k]===undefined) c.data[k]=clone(DEFAULTS[k]);});
   if(!c.data.rt||typeof c.data.rt!=='object') c.data.rt=clone(DEFAULTS.rt);
   Object.keys(DEFAULTS.rt).forEach(k=>{
-    if(c.data.rt[k]===undefined) c.data.rt[k]=clone(DEFAULTS.rt[k]);});
+    if(k!=='mig3'&&c.data.rt[k]===undefined) c.data.rt[k]=clone(DEFAULTS.rt[k]);});
+  migrateCfg(c);
   return c;
 }
 const C=()=>cfgRec().data;
@@ -417,7 +483,7 @@ function logicalDate(type,iso){const d=new Date(iso);
   if(type==='sleep')d.setHours(d.getHours()-12);return dkey(d);}
 const mins=r=>r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):0;
 const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
-const touch=r=>{r.updatedAt=now();r.synced=false;};
+function touch(r){r.updatedAt=now();r.synced=false;}
 const drop=r=>{
   if(!r)return;
   if(r.everSynced){r.deleted=true;touch(r);}
@@ -446,6 +512,7 @@ const rtRec=k=>db.items.find(i=>i.kind==='routine'&&i.id===rtId(k)&&!i.deleted);
 const activeRt=()=>live().find(i=>i.kind==='routine'&&!i.end&&!i.closed);
 const stepDefs=()=>C().rt.steps.filter(s=>!s.off);
 const stepLabel=role=>{const d=C().rt.steps.find(s=>s.opt===role);return d?d.label:null;};
+const ytIcon=lb=>{const y=C().rt.yt.find(x=>x.label===lb);return (y&&y.icon)||lb;};
 function rtTarget(k){const [H,M]=(C().rt.wake||'03:30').split(':').map(Number);
   const t=new Date(k+'T00:00:00');t.setHours(H,M,0,0);return t;}
 function startRoutine(startIso,sleepId){
@@ -464,15 +531,14 @@ function autoCloseRoutines(){
   if(ch) save();
 }
 function rtMetrics(r){
-  const B=stepLabel('bowel'),P=stepLabel('padlet'),st=r.steps||{};
+  const T=stepLabel('toilet'),P=stepLabel('padlet'),st=r.steps||{};
   const wakeDiff=Math.round((new Date(r.start)-rtTarget(r.dateKey))/60000);
   const totalMin=r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):'';
-  const toiletMin=(B&&st[B]&&r.end)?Math.max(0,Math.round((new Date(r.end)-new Date(st[B]))/60000)):'';
+  const toiletMin=(T&&st[T]&&r.end)?Math.max(0,Math.round((new Date(r.end)-new Date(st[T]))/60000)):'';
   const labels=stepDefs().filter(d=>d.opt!=='wake'&&d.opt!=='end').map(d=>d.label);
   Object.keys(st).forEach(l=>{if(!labels.includes(l))labels.push(l);});
   const stepText=labels.map(l=>l+'='+(st[l]?hhmm(new Date(st[l])):'')).join('|');
-  const y=C().rt.yt.find(x=>x.label===r.yt);
-  const ytText=r.yt?((y&&y.icon?y.icon+' ':'')+r.yt):'';
+  const ytText=r.yt?(ytIcon(r.yt)!==r.yt?ytIcon(r.yt)+' ':'')+r.yt:'';
   const status=r.closed==='done'?'完了':r.closed==='auto'?'未完':'進行中';
   return {wakeDiff,totalMin,toiletMin,padletText:(P&&st[P])?'○':'',ytText,stepText,status};
 }
@@ -488,6 +554,19 @@ function linkHref(u){
     return `intent://${x.host}${x.pathname}${x.search}#Intent;scheme=${x.protocol.replace(':','')};`+
       `package=com.brave.browser;S.browser_fallback_url=${encodeURIComponent(u)};end`;
   }catch(e){return u;}
+}
+
+/* ---------- インボックス: データ ---------- */
+const inboxAll=()=>live().filter(i=>i.kind==='inbox');
+const inboxPending=()=>inboxAll().filter(i=>!i.eval);
+const evDef=lb=>C().ievals.find(x=>x.label===lb)||{icon:'',label:lb};
+const extractUrl=s=>{const m=String(s||'').match(/https?:\/\/[^\s<>"]+/);return m?m[0]:'';};
+function addInbox(title,url,src){
+  const s=now();
+  const r={id:uid(),kind:'inbox',start:s,end:null,dateKey:dayKeyOf(new Date()),
+    title:(title||url||'(無題)').slice(0,300),url:url||'',note:'',eval:'',doneAt:null,
+    src:src,updatedAt:s,synced:false};
+  db.items.push(r);save();return r;
 }
 
 /* ---------- 計測 ---------- */
@@ -549,11 +628,11 @@ function renderRoutineCard(m,r){
   const rt=C().rt,wd=rtMetrics(r).wakeDiff;
   m.innerHTML=`<div class="center sub">🌅 朝ルーティン　起床 ${hhmm(new Date(r.start))}（目標${wd>=0?'+':''}${wd}分）</div>
     <div class="timer" id="rtTmr">00:00:00</div>
-    <div class="center sub" id="rtBowel" style="min-height:16px;font-size:14px"></div>
+    <div class="center sub" id="rtToilet" style="min-height:16px;font-size:14px"></div>
     <div id="rtSteps" class="mt"></div>
     <div class="mini mt" style="margin-bottom:6px">YouTube（任意・もう一度タップで解除）</div>
     <div class="chips" id="rtYt"></div>
-    <a class="linkbtn" id="rtLink">🎧 ${rt.linkName||'リンク'} を開く</a>
+    <a class="linkbtn" id="rtLink">🎧 ${esc(rt.linkName||'リンク')} を開く</a>
     <div class="row mt"><button class="small" id="rtEdit">時刻を修正</button>
       <button class="small" id="rtAbort">未完で閉じる</button></div>
     <div class="row mt"><button class="small sleep" id="rtS">😴 睡眠</button>
@@ -562,7 +641,7 @@ function renderRoutineCard(m,r){
   const addBtn=(icon,label,time,done,fn)=>{
     const b=document.createElement('button');
     b.className='lvbtn step'+(done?' done':'');
-    b.innerHTML=`<span class="lvic">${icon||''}</span><span>${label}</span><span class="tm">${time||'—'}</span>`;
+    b.innerHTML=`<span class="lvic">${esc(icon)}</span><span>${esc(label)}</span><span class="tm">${time||'—'}</span>`;
     b.addEventListener('click',fn);box.appendChild(b);
   };
   const defs=stepDefs();
@@ -605,6 +684,7 @@ function renderDaySum(){
   const T=dayKeyOf(new Date()),e=dailyEval(T),y=dailyEval(shiftKey(T,-1));
   $('daySum').innerHTML=`日次チェック　今日 ${e.done}/${e.total}
     <br><span class="mini">昨日 ${y.done}/${y.total}（未記入 ${y.rows.length-y.filled}）</span>`;
+  $('btnInbox').textContent=`📥 インボックス ${inboxPending().length}`;
 }
 function renderAng(){
   const t=dkey(new Date()),d7=new Date();d7.setDate(d7.getDate()-6);
@@ -613,7 +693,7 @@ function renderAng(){
   wk.forEach(r=>{const d=lvDef(r);cnt[d.icon+d.label]=(cnt[d.icon+d.label]||0)+1;});
   const brk=C().levels.filter(l=>cnt[l.icon+l.label])
     .map(l=>`${l.icon}${cnt[l.icon+l.label]}`).join('  ');
-  $('angSum').innerHTML=`${C().title}　今日 ${wk.filter(i=>i.dateKey===t).length}件 / 7日 ${wk.length}件
+  $('angSum').innerHTML=`${esc(C().title)}　今日 ${wk.filter(i=>i.dateKey===t).length}件 / 7日 ${wk.length}件
     <br><span style="font-size:15px">${brk||'—'}</span>`;
 }
 function renderHist(){
@@ -632,7 +712,7 @@ function renderHist(){
       if(r.kind==='sleep'){
         el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pnIndexOf(r):'睡眠'}</span>
           ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
-          <span class="mini">${(r.tags||[]).map(tg=>tagDef(tg).icon||'').join('')}${r.note?' 📝':''}</span></span>
+          <span class="mini">${esc((r.tags||[]).map(tg=>tagDef(tg).icon||'').join(''))}${r.note?' 📝':''}</span></span>
           <span>${r.end?durText(mins(r)):''}${dot}</span>`;
         el.addEventListener('click',()=>openEdit(r.id));
       }else if(r.kind==='routine'){
@@ -644,7 +724,7 @@ function renderHist(){
       }else{
         const l=lvDef(r);
         el.innerHTML=`<span><span class="tag t-ang">場面</span>${hhmm(new Date(r.start))}
-          ${l.icon} ${l.label}<span class="mini"> ${r.who||''} ${(r.trig||[]).join('/')}</span></span>
+          ${esc(l.icon)} ${esc(l.label)}<span class="mini"> ${esc(r.who||'')} ${esc((r.trig||[]).join('/'))}</span></span>
           <span>${dot}</span>`;
         el.addEventListener('click',()=>openAnger(r.id));
       }
@@ -657,6 +737,7 @@ function kindName(r){
   if(r.kind==='sleep') return r.type==='pn'?'PN':'睡眠';
   if(r.kind==='daily') return '日次 '+(r.dateKey||'');
   if(r.kind==='routine') return '朝ルーティン '+(r.dateKey||'');
+  if(r.kind==='inbox') return '📥 '+(r.title||'');
   return r.kind||'?';
 }
 function renderTrash(){
@@ -665,7 +746,7 @@ function renderTrash(){
   t.innerHTML=ds.length?'':'<div class="sub">ありません</div>';
   ds.forEach(r=>{
     const el=document.createElement('div');el.className='hist';
-    el.innerHTML=`<span class="mini">${r.start?fmt(r.start):''}　${kindName(r)}</span>`;
+    el.innerHTML=`<span class="mini">${r.start?fmt(r.start):''}　${esc(kindName(r))}</span>`;
     const b=document.createElement('button');b.className='small';b.textContent='復元';
     b.style.flex='0 0 auto';
     b.addEventListener('click',()=>{r.deleted=false;touch(r);save();render();sync(true);});
@@ -678,10 +759,10 @@ function tick(){
   if(a&&el) el.textContent=hms(Math.floor((Date.now()-new Date(a.start))/1000));
   const r=activeRt(),t2=$('rtTmr');
   if(r&&t2) t2.textContent=hms(Math.max(0,Math.floor((Date.now()-new Date(r.start))/1000)));
-  const bw=$('rtBowel');
-  if(r&&bw){
-    const B=stepLabel('bowel'),b=B&&r.steps&&r.steps[B];
-    bw.textContent=b?`🚽 排便完了から ${Math.max(0,Math.floor((Date.now()-new Date(b))/60000))}分（目安 ${C().rt.toilet}分）`:'';
+  const tw=$('rtToilet');
+  if(r&&tw){
+    const T=stepLabel('toilet'),b=T&&r.steps&&r.steps[T];
+    tw.textContent=b?`🚽 入室から ${Math.max(0,Math.floor((Date.now()-new Date(b))/60000))}分（目安 ${C().rt.toilet}分）`:'';
   }
 }
 setInterval(tick,1000);
@@ -710,7 +791,7 @@ function drawTags(){
   defs.forEach(t=>{
     const b=document.createElement('button');
     b.className='chip'+((cur.tags||[]).includes(t.label)?' on':'');
-    b.innerHTML=`${t.icon||''} ${t.label}`;
+    b.textContent=`${t.icon||''} ${t.label}`;
     b.addEventListener('click',()=>{
       cur.tags=cur.tags||[];
       const isOn=cur.tags.includes(t.label);
@@ -778,11 +859,12 @@ function drawRoutine(){
   const r=rcur; if(!r)return;
   const mt=rtMetrics(r);
   $('rDate').textContent=r.dateKey;
-  $('rStat').textContent=`${mt.status}　所要 ${mt.totalMin===''?'—':durText(mt.totalMin)}　排便→退出 ${mt.toiletMin===''?'—':mt.toiletMin+'分'}`;
+  $('rStat').textContent=`${mt.status}　所要 ${mt.totalMin===''?'—':durText(mt.totalMin)}　トイレ滞在 ${mt.toiletMin===''?'—':mt.toiletMin+'分'}`;
   const body=$('rBody');body.innerHTML='';
   const addRow=(label,iso,onSet,onClear)=>{
     const el=document.createElement('div');el.className='rrow';
-    el.innerHTML=`<span style="flex:1;font-size:14px">${label}</span>`;
+    const sp=document.createElement('span');sp.style.cssText='flex:1;font-size:14px';sp.textContent=label;
+    el.appendChild(sp);
     const inp=document.createElement('input');inp.type='time';
     inp.value=iso?hhmm(new Date(iso)):'';
     inp.addEventListener('change',()=>{if(!inp.value)return;
@@ -804,7 +886,7 @@ function drawRoutine(){
   });
   Object.keys(st).filter(l=>!labels.includes(l)).forEach(l=>
     addRow(l,st[l],v=>{st[l]=atTime(r.start,v);},()=>{delete st[l];}));
-  addRow('🏁 終了（退出）',r.end,v=>{r.end=atTime(r.start,v);r.closed='done';},
+  addRow('🏁 退出（終了）',r.end,v=>{r.end=atTime(r.start,v);r.closed='done';},
     ()=>{r.end=null;r.closed='';});
   drawYt($('rYt'),r,drawRoutine);
   $('rReopen').style.display=(r.end||r.closed)?'':'none';
@@ -871,7 +953,7 @@ function drawAnger(){
     if(l.off&&acur.levelKey!==l.label)return;
     const b=document.createElement('button');
     b.className='lvbtn'+(acur.levelKey===l.label?' on':'');
-    b.innerHTML=`<span class="lvic">${l.icon||''}</span><span>${l.label}</span>`;
+    b.innerHTML=`<span class="lvic">${esc(l.icon||'')}</span><span>${esc(l.label)}</span>`;
     b.addEventListener('click',()=>{
       if(acur.levelKey===l.label){acur.levelKey='';acur.level=null;}
       else{acur.levelKey=l.label;acur.level=i;}
@@ -961,7 +1043,7 @@ function autoVal(key,k){
       return r.closed?{v:'ng',text:'記録なし'}:null;   // 進行中は未確定
     }
     if(mt.toiletMin==='') return null;
-    return {v:mt.toiletMin<=(+rt.toilet||0)?'ok':'ng',text:`${mt.toiletMin}分`};
+    return {v:mt.toiletMin<=(+rt.toilet||0)?'ok':'ng',text:`${mt.toiletMin}分（目安${rt.toilet}分）`};
   }
   return null;
 }
@@ -1000,6 +1082,7 @@ function openDaily(off){
   if(!$('ddlg').open) $('ddlg').showModal();
 }
 function drawDaily(){
+  if(!dk)return;
   const T=dayKeyOf(new Date());
   $('dDate').textContent=dk;
   $('dToday').className='small seg'+(dk===T?' on':'');
@@ -1009,7 +1092,7 @@ function drawDaily(){
     const el=document.createElement('div');el.className='drow';
     let sub='';
     if(r.ty.t==='auto') sub=(r.auto?`自動: ${r.auto.text}`:'自動: データなし')+(r.manual?' ／ ✎手動':'');
-    el.innerHTML=`<div class="dlab">${r.it.icon||''} ${r.it.label} <span class="mini">${sub}</span></div>`;
+    el.innerHTML=`<div class="dlab">${esc(r.it.icon||'')} ${esc(r.it.label)} <span class="mini">${esc(sub)}</span></div>`;
     const cs=document.createElement('div');cs.className='chips';
     const opts=r.ty.t==='count'
       ? Array.from({length:r.ty.n},(_,i)=>[i+1,`${i+1}回`]).concat([['na','−対象外']])
@@ -1026,6 +1109,7 @@ function drawDaily(){
   const own=dailyRec(dk,false),ob=own&&!own.deleted&&own.brave;
   $('dSum').textContent=`達成 ${e.done}/${e.total}　未記入 ${e.rows.length-e.filled}`+
     (ob?`　／ この日の Brave ${ob.n??'-'}回・${ob.min==null?'-':durText(ob.min)}`:'');
+  $('dInbox').textContent=`📥 インボックス ${inboxPending().length}件を処理`;
 }
 function setDaily(r,val){
   const rec=dailyRec(dk,true),L=r.it.label;
@@ -1058,11 +1142,241 @@ function setBrave(){
 on('btnDay','click',()=>openDaily(0));
 on('dToday','click',()=>{dk=dayKeyOf(new Date());drawDaily();drawBrave();});
 on('dYest','click',()=>{dk=shiftKey(dayKeyOf(new Date()),-1);drawDaily();drawBrave();});
+on('dInbox','click',()=>openInbox());
 on('dClose','click',()=>$('ddlg').close());
 on('ddlg','close',()=>{
   const rec=dk&&dailyRec(dk,false);
   if(rec&&!rec.deleted&&snapAuto(rec)){touch(rec);save();}
   render();sync(true);
+});
+
+/* ---------- インボックス画面（タップで即時反映） ---------- */
+let iSeen=new Set();                 // この画面で評価した項目は閉じるまで一覧に残す（解除できるように）
+function openInbox(){iSeen=new Set();$('iAdd').value='';drawInbox();
+  if(!$('idlg').open) $('idlg').showModal();}
+function inboxRow(r){
+  const el=document.createElement('div');el.className='ibox';
+  const head=document.createElement('div');head.className='dlab';
+  if(r.url){const a=document.createElement('a');a.href=r.url;a.target='_blank';a.rel='noopener';
+    a.className='ilink';a.textContent=r.title||r.url;head.appendChild(a);}
+  else head.textContent=r.title;
+  el.appendChild(head);
+  const meta=document.createElement('div');meta.className='mini';meta.style.marginBottom='6px';
+  meta.textContent=`追加 ${fmt(r.start)}${r.doneAt?' ／ 処理 '+fmt(r.doneAt):''}`;
+  el.appendChild(meta);
+  const cs=document.createElement('div');cs.className='chips';
+  C().ievals.filter(x=>!x.off||x.label===r.eval).forEach(x=>{
+    const b=document.createElement('button');
+    b.className='chip'+(r.eval===x.label?' on':'');
+    b.textContent=`${x.icon||''} ${x.label}`;
+    b.addEventListener('click',()=>{
+      if(r.eval===x.label){r.eval='';r.doneAt=null;}
+      else{r.eval=x.label;r.doneAt=now();}
+      iSeen.add(r.id);touch(r);save();drawInbox();
+    });
+    cs.appendChild(b);
+  });
+  const del=document.createElement('button');del.className='chip';del.textContent='× 誤登録';
+  del.addEventListener('click',()=>{if(!confirm('この項目を削除しますか？（評価の記録も残りません）'))return;
+    drop(r);drawInbox();});
+  cs.appendChild(del);
+  el.appendChild(cs);
+  const nt=document.createElement('input');nt.className='mt';nt.placeholder='ひとことメモ（Obsidian のノート名など・任意）';
+  nt.value=r.note||'';
+  nt.addEventListener('change',()=>{r.note=nt.value;touch(r);save();});
+  el.appendChild(nt);
+  return el;
+}
+function drawInbox(){
+  const all=inboxAll().sort((a,b)=>new Date(b.start)-new Date(a.start));
+  const pend=all.filter(i=>!i.eval||iSeen.has(i.id));
+  const lim=Date.now()-14*86400000;
+  const done=all.filter(i=>i.eval&&!iSeen.has(i.id)&&i.doneAt&&new Date(i.doneAt)>lim)
+    .sort((a,b)=>new Date(b.doneAt)-new Date(a.doneAt));
+  $('iCount').textContent=`未処理 ${inboxPending().length}件`;
+  const L=$('iList');L.innerHTML='';
+  if(!pend.length) L.innerHTML='<div class="sub center">未処理はありません</div>';
+  pend.forEach(r=>L.appendChild(inboxRow(r)));
+  const D=$('iDone');D.innerHTML='';
+  if(!done.length) D.innerHTML='<div class="sub">ありません</div>';
+  done.forEach(r=>D.appendChild(inboxRow(r)));
+}
+function addManual(){
+  const v=$('iAdd').value.trim(); if(!v)return;
+  const u=extractUrl(v),t=v.replace(u,'').trim()||u;
+  addInbox(t,u,'manual');$('iAdd').value='';drawInbox();
+}
+on('btnInbox','click',openInbox);
+on('iAddBtn','click',addManual);
+on('iAdd','keydown',e=>{if(e.key==='Enter'){e.preventDefault();addManual();}});
+on('iClose','click',()=>$('idlg').close());
+on('idlg','close',()=>{
+  const v=$('iAdd').value.trim(); if(v) addManual();
+  if($('ddlg').open) drawDaily();
+  render();sync(true);
+});
+
+/* ---------- エクスポート（Obsidian 用 Markdown） ---------- */
+const WD=['日','月','火','水','木','金','土'];
+const wdOf=k=>WD[new Date(k+'T12:00:00').getDay()];
+const sgn=n=>(n>=0?'+':'')+n;
+const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+const mdTxt=s=>String(s||'').replace(/[\[\]|]/g,' ').replace(/\s+/g,' ').trim();
+const ilink=i=>i.url?`[${mdTxt(i.title)||'link'}](${i.url})`:mdTxt(i.title);
+function markSym(r){
+  if(r.v===undefined) return '未';
+  if(r.v==='na') return '−';
+  if(r.v==='ok') return '✓';
+  if(r.v==='ng') return '✗';
+  return `${r.v}/${r.ty.n}`;
+}
+function angBrk(A){const c={};
+  A.forEach(a=>{const l=lvDef(a),k=l.icon||l.label;c[k]=(c[k]||0)+1;});
+  return Object.keys(c).map(k=>k+c[k]).join(' ');}
+function dayData(k){
+  const s=live().filter(i=>i.kind==='sleep'&&i.type==='sleep'&&i.end&&rtKeyOf(new Date(i.end))===k)
+    .sort((a,b)=>mins(b)-mins(a))[0]||null;
+  const pn=live().filter(i=>i.kind==='sleep'&&i.type==='pn'&&i.end&&dayKeyOf(new Date(i.start))===k)
+    .sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const r=rtRec(k)||null,mt=r?rtMetrics(r):null,e=dailyEval(k);
+  const dr=dailyRec(k,false),br=(dr&&!dr.deleted&&dr.brave)||null;
+  const ang=live().filter(i=>i.kind==='anger'&&i.dateKey===k)
+    .sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const inA=inboxAll().filter(i=>dayKeyOf(new Date(i.start))===k);
+  const inD=inboxAll().filter(i=>i.eval&&i.doneAt&&dayKeyOf(new Date(i.doneAt))===k);
+  const wakeDiff=s?Math.round((new Date(s.end)-rtTarget(k))/60000):null;
+  return {k,s,pn,r,mt,e,br,ang,inA,inD,wakeDiff};
+}
+function mdDay(d,inc,h,withInbox){
+  const L=[`${h} ライフログ ${d.k}（${wdOf(d.k)}）`];
+  const s=d.s;
+  if(s){
+    const tg=(s.tags||[]).join(' ');
+    L.push(`- 睡眠: ${hhmm(new Date(s.start))}→${hhmm(new Date(s.end))} ${durText(mins(s))}${tg?' ／ '+tg:''}${s.note?' ／ '+mdTxt(s.note):''}`);
+    L.push(`- 起床: ${hhmm(new Date(s.end))}（目標${sgn(d.wakeDiff)}分）`);
+  }else L.push('- 睡眠: 記録なし');
+  if(d.r){
+    const r=d.r,mt=d.mt;
+    L.push(`- 朝ルーティン: ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):mt.status}`+
+      `${mt.totalMin!==''?' '+durText(mt.totalMin):''}`+
+      `${mt.toiletMin!==''?' ／ トイレ滞在 '+mt.toiletMin+'分':''}`+
+      `${r.yt?' ／ YouTube '+mt.ytText:''}`);
+    const st=r.steps||{};
+    const steps=stepDefs().filter(x=>x.opt!=='wake'&&x.opt!=='end'&&st[x.label])
+      .map(x=>`${x.label} ${hhmm(new Date(st[x.label]))}`);
+    if(steps.length) L.push('  - '+steps.join(' / '));
+    if(r.note) L.push('  - メモ: '+mdTxt(r.note));
+  }else L.push('- 朝ルーティン: 記録なし');
+  if(d.pn.length){
+    const sum=d.pn.reduce((a,p)=>a+mins(p),0);
+    L.push(`- PN: ${d.pn.length}回 計${durText(sum)}（${d.pn.map(p=>hhmm(new Date(p.start))+' '+mins(p)+'分').join(', ')}）`);
+  }
+  L.push(`- 日次 ${d.e.done}/${d.e.total}: `+d.e.rows.map(x=>markSym(x)+' '+x.it.label).join(' ／ '));
+  if(d.br) L.push(`- Brave: ${d.br.n??'-'}回 ・ ${d.br.min==null?'-':durText(d.br.min)}`);
+  if(inc&&d.ang.length){
+    L.push(`- ${C().title}: ${d.ang.length}件`);
+    d.ang.forEach(a=>{const l=lvDef(a);
+      L.push(`  - ${hhmm(new Date(a.start))} ${l.icon||''} ${l.label}${a.who?' ／ '+a.who:''}`+
+        `${(a.trig||[]).length?' ／ '+a.trig.join('/'):''}${a.note?' ／ '+mdTxt(a.note):''}`);});
+  }
+  if(withInbox&&(d.inA.length||d.inD.length)){
+    L.push(`- インボックス: 追加${d.inA.length} ／ 処理${d.inD.length}`);
+    d.inD.forEach(i=>L.push(`  - ${evDef(i.eval).icon||''}${i.eval} ${ilink(i)}${i.note?' — '+mdTxt(i.note):''}`));
+  }
+  return L.join('\n');
+}
+function mdWeek(ks,inc){
+  const D=ks.map(dayData),rt=C().rt;
+  const L=[`## 週次ログ ${ks[0]}〜${ks[ks.length-1]}`,'',
+    '> ライフログアプリの自動出力。1日の区切りは 3:00。「未」は未記入（できなかった、ではない）。',''];
+  const hd=['日付','起床','睡眠','PN','朝RT','トイレ','YT','日次','Brave'].concat(inc?[C().title]:[]);
+  L.push('| '+hd.join(' | ')+' |');
+  L.push('|'+hd.map(()=>'---').join('|')+'|');
+  D.forEach(d=>{
+    const pm=d.pn.reduce((a,p)=>a+mins(p),0);
+    const c=[`${d.k.slice(5)}(${wdOf(d.k)})`,
+      d.s?`${hhmm(new Date(d.s.end))}(${sgn(d.wakeDiff)})`:'—',
+      d.s?durText(mins(d.s)):'—',
+      d.pn.length?`${d.pn.length}回${pm}分`:'—',
+      d.r?(d.mt.totalMin!==''?d.mt.totalMin+'分':d.mt.status):'—',
+      d.mt&&d.mt.toiletMin!==''?d.mt.toiletMin+'分':'—',
+      d.r&&d.r.yt?ytIcon(d.r.yt):'—',
+      `${d.e.done}/${d.e.total}`,
+      d.br?`${d.br.n??'-'}回/${d.br.min??'-'}分`:'—'];
+    if(inc) c.push(d.ang.length?angBrk(d.ang):'—');
+    L.push('| '+c.map(mdTxt).join(' | ')+' |');
+  });
+
+  L.push('','### 集計');
+  const W=D.filter(d=>d.s);
+  const aw=avg(W.map(d=>{const e=new Date(d.s.end);return e.getHours()*60+e.getMinutes();}));
+  L.push(`- 起床: 記録 ${W.length}/${D.length}日 ／ 平均 ${aw==null?'—':pad(Math.floor(aw/60))+':'+pad(aw%60)}`+
+    ` ／ 目標±${rt.tol}分以内 ${W.filter(d=>Math.abs(d.wakeDiff)<=(+rt.tol||0)).length}日`);
+  const sl=avg(W.map(d=>mins(d.s)));
+  L.push(`- 睡眠: 平均 ${sl==null?'—':durText(sl)} ／ PN 計 ${D.reduce((a,d)=>a+d.pn.length,0)}回`);
+  const R=D.filter(d=>d.r);
+  const tt=avg(R.filter(d=>d.mt.totalMin!=='').map(d=>d.mt.totalMin));
+  const tm=R.filter(d=>d.mt.toiletMin!=='').map(d=>d.mt.toiletMin),ta=avg(tm);
+  L.push(`- 朝ルーティン: 記録 ${R.length}日（完了 ${R.filter(d=>d.r.closed==='done').length}） ／ 平均所要 ${tt==null?'—':durText(tt)}`+
+    ` ／ トイレ滞在 平均 ${ta==null?'—':ta+'分'}（${rt.toilet}分以内 ${tm.filter(x=>x<=(+rt.toilet||0)).length}/${tm.length}日）`);
+  const yc={};R.forEach(d=>{if(d.r.yt)yc[d.r.yt]=(yc[d.r.yt]||0)+1;});
+  const yn=R.filter(d=>!d.r.yt).length;
+  L.push(`- YouTube 申告: ${Object.keys(yc).length?Object.keys(yc).map(k=>ytIcon(k)+k+' '+yc[k]).join(' ／ '):'—'}（未申告 ${yn}）`);
+  L.push('- 日次チェック（達成 / 記録した日 / 未記入）:');
+  dItems().forEach(it=>{
+    let ok=0,rec=0,no=0;const cnt=[];
+    D.forEach(d=>{const r=d.e.rows.find(x=>x.it.label===it.label); if(!r)return;
+      if(r.v===undefined) no++;
+      else if(r.v!=='na'){rec++; if(r.ok) ok++; if(r.ty.t==='count') cnt.push(+r.v||0);}});
+    L.push(`  - ${it.icon||''} ${it.label}: ${ok} / ${rec} / ${no}`+
+      (cnt.length?`（平均 ${(cnt.reduce((a,b)=>a+b,0)/cnt.length).toFixed(1)}回）`:''));
+  });
+  const B=D.filter(d=>d.br);
+  const bn=avg(B.filter(d=>d.br.n!=null).map(d=>d.br.n)),bm=avg(B.filter(d=>d.br.min!=null).map(d=>d.br.min));
+  L.push(`- Brave: 記録 ${B.length}日 ／ 平均 ${bn??'—'}回・${bm==null?'—':durText(bm)}`);
+  if(inc){const A=D.flatMap(d=>d.ang);L.push(`- ${C().title}: 計 ${A.length}件 ${A.length?angBrk(A):''}`);}
+  const IA=D.flatMap(d=>d.inA),ID=D.flatMap(d=>d.inD),ec={};
+  ID.forEach(i=>{ec[i.eval]=(ec[i.eval]||0)+1;});
+  L.push(`- インボックス: 追加 ${IA.length} ／ 処理 ${ID.length}`+
+    (ID.length?'（'+Object.keys(ec).map(k=>(evDef(k).icon||'')+k+' '+ec[k]).join(' ／ ')+'）':'')+
+    ` ／ 現在の未処理 ${inboxPending().length}`);
+  if(ID.length){
+    L.push('','### インボックスの処理');
+    ID.forEach(i=>L.push(`- ${evDef(i.eval).icon||''}${i.eval} ${ilink(i)}${i.note?' — '+mdTxt(i.note):''}`));
+  }
+  L.push('','### 日別');
+  D.forEach(d=>{L.push('');L.push(mdDay(d,inc,'####',false));});
+  return L.join('\n');
+}
+let ep='today';
+function periodKeys(p){
+  const T=dayKeyOf(new Date());
+  if(p==='today') return [T];
+  if(p==='yest') return [shiftKey(T,-1)];
+  if(p==='d7') return Array.from({length:7},(_,i)=>shiftKey(T,i-6));
+  const off=(new Date(T+'T12:00:00').getDay()+6)%7,mon=shiftKey(T,-off-7);   // 先週の月〜日
+  return Array.from({length:7},(_,i)=>shiftKey(mon,i));
+}
+function drawExport(){
+  ['today','yest','d7','lastw'].forEach(p=>{const b=$('e_'+p);
+    if(b) b.className='small seg'+(ep===p?' on':'');});
+  const inc=$('eAng').checked,ks=periodKeys(ep);
+  $('eOut').value=ks.length===1?mdDay(dayData(ks[0]),inc,'##',true):mdWeek(ks,inc);
+  $('eMsg').textContent='';
+}
+function openExport(){
+  ep=new Date().getHours()>=12?'today':'yest';
+  $('eAng').checked=db.settings.expAng!==false;
+  drawExport();$('edlg').showModal();
+}
+on('btnExp','click',openExport);
+['today','yest','d7','lastw'].forEach(p=>on('e_'+p,'click',()=>{ep=p;drawExport();}));
+on('eAng','change',()=>{db.settings.expAng=$('eAng').checked;save();drawExport();});
+on('eClose','click',()=>$('edlg').close());
+on('eCopy','click',async()=>{
+  const t=$('eOut').value;
+  try{await navigator.clipboard.writeText(t);$('eMsg').textContent='コピーしました。Obsidian に貼り付けてください';}
+  catch(e){$('eOut').select();$('eMsg').textContent='選択しました。長押しでコピーしてください';}
 });
 
 /* ---------- カスタマイズ ---------- */
@@ -1092,6 +1406,7 @@ function fillCfg(c){
   $('cDaily').value=toLines(c.daily,'opt');
   $('cSteps').value=toLines(c.rt.steps,'opt');
   $('cYt').value=toLines(c.rt.yt);
+  $('cIev').value=toLines(c.ievals);
   $('cLinkName').value=c.rt.linkName||'';
   $('cLink').value=c.rt.link||'';
   $('cWake').value=c.rt.wake;
@@ -1111,6 +1426,8 @@ on('cSave','click',()=>{
   if(!lv.filter(x=>!x.off).length){$('cMsg').textContent='「自分の反応」は1つ以上必要です';return;}
   const steps=parseIcon($('cSteps').value,'opt');
   if(!steps.filter(x=>!x.off).length){$('cMsg').textContent='ルーティンのステップは1つ以上必要です';return;}
+  const iev=parseIcon($('cIev').value,null);
+  if(!iev.filter(x=>!x.off).length){$('cMsg').textContent='インボックスの評価は1つ以上必要です';return;}
   const num=(id,d)=>{const v=$(id).value;return v===''||isNaN(+v)?d:+v;};
   const rec=cfgRec();
   rec.data=Object.assign({},rec.data,{           // 既存データとマージ（知らない項目を消さない）
@@ -1120,6 +1437,7 @@ on('cSave','click',()=>{
     trig:parsePlain($('cTrig').value),
     tags:parseIcon($('cTags').value,'group'),
     daily:parseIcon($('cDaily').value,'opt'),
+    ievals:iev,
     rt:Object.assign({},rec.data.rt,{
       wake:$('cWake').value||DEFAULTS.rt.wake,
       tol:num('cTol',DEFAULTS.rt.tol),
@@ -1128,7 +1446,8 @@ on('cSave','click',()=>{
       steps:steps,
       yt:parseIcon($('cYt').value,null),
       link:$('cLink').value.trim(),
-      linkName:$('cLinkName').value.trim()})
+      linkName:$('cLinkName').value.trim(),
+      mig3:true})
   });
   touch(rec);save();$('cdlg').close();render();sync(true);
 });
@@ -1149,6 +1468,8 @@ function forPush(i){
     o.checkText=e.rows.map(r=>r.it.label+'='+r.mark).join('|');
   }else if(i.kind==='routine'){
     Object.assign(o,rtMetrics(i));
+  }else if(i.kind==='inbox'){
+    o.evalText=i.eval?((evDef(i.eval).icon||'')+' '+i.eval).trim():'';
   }
   return o;
 }
@@ -1176,11 +1497,15 @@ async function sync(silent){
     (j.saved||[]).forEach(id=>{const r=db.items.find(x=>x.id===id);
       if(r){r.synced=true;r.everSynced=true;}});
     merge(j.items);save();render();
+    if($('idlg').open) drawInbox();
     msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
   }catch(e){msg('同期失敗：'+e.message+'（記録は端末に保持）');}
   finally{busy=false;}
 }
 function msg(t){$('syncmsg').textContent=t;$('cfgMsg').textContent=t;}
+function toast(t){const el=$('toast');el.textContent=t;el.style.display='';
+  clearTimeout(toast.tm);toast.tm=setTimeout(()=>{el.style.display='none';},8000);}
+on('toast','click',()=>{$('toast').style.display='none';});
 on('btnSync','click',()=>sync(false));
 on('btnSave','click',()=>{
   db.settings.url=$('cfgUrl').value.trim();
@@ -1214,13 +1539,24 @@ $('cfgUrl').value=db.settings.url;
 $('cfgToken').value=db.settings.token;
 
 cfgRec();save();
-const q=new URLSearchParams(location.search).get('a');
-history.replaceState(null,'',location.pathname);   // ?a= と #setup= を URL から消す
+const P=new URLSearchParams(location.search);
+const q=P.get('a');
+let shareNote='';
+if(P.has('text')||P.has('url')||P.has('title')){         // Android の共有メニューから
+  const t=(P.get('title')||'').trim(),x=(P.get('text')||'').trim();
+  const u=extractUrl(P.get('url'))||extractUrl(x);
+  const title=t||x.replace(u,'').trim()||u;
+  if(u&&inboxPending().some(i=>i.url===u)) shareNote='📥 既にインボックスに入っています';
+  else if(title||u){const r=addInbox(title,u,'share');
+    shareNote=`📥 インボックスに入れました（未処理 ${inboxPending().length}件）：${r.title}`;}
+}
+history.replaceState(null,'',location.pathname);   // ?a= / 共有 / #setup= を URL から消す
 if((q==='sleep'||q==='pn')&&!activeRec()) startRec(q);
 render();
 if(q==='anger') openAnger(null);
 if(q==='daily') openDaily(0);
 if(setupNote) msg(setupNote);
+if(shareNote) toast(shareNote+'　— 今は見ずに閉じて大丈夫です');
 sync(true);
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

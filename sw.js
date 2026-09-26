@@ -1,4 +1,4 @@
-const V='sleeplog-2026-09-26a';   // 更新したらこの文字列を必ず変える
+const V='sleeplog-2026-09-26b';   // 更新したらこの文字列を必ず変える
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const DOC_TIMEOUT=3000;           // これを超えたらキャッシュ版で表示
 
@@ -34,18 +34,20 @@ self.addEventListener('fetch',e=>{
     || url.pathname.endsWith('.html');
 
   if(isDoc){ e.respondWith(docStrategy()); return; }
+  if(url.pathname.endsWith('.webmanifest')){ e.respondWith(netFirst(req)); return; }
   e.respondWith(assetStrategy(req));
 });
 
-// HTML はネットワーク優先。遅い・失敗したらキャッシュ版
+function withTimeout(p){
+  return Promise.race([p,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),DOC_TIMEOUT))]);
+}
+
+// HTML はネットワーク優先。遅い・失敗したらキャッシュ版（?a= や共有のクエリ付きも同じ画面）
 async function docStrategy(){
   const cached=()=>caches.match('./').then(r=>r||caches.match('./index.html'));
   try{
-    const net=fetch('./',{cache:'no-store'});
-    const res=await Promise.race([
-      net,
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),DOC_TIMEOUT))
-    ]);
+    const res=await withTimeout(fetch('./',{cache:'no-store'}));
     if(res && res.ok && res.type==='basic'){     // 404/500 をキャッシュしない
       const cp=res.clone();
       caches.open(V).then(c=>c.put('./',cp)).catch(()=>{});
@@ -61,6 +63,21 @@ async function docStrategy(){
       '<p>オフラインで、まだ保存された画面がありません。</p>'+
       '<p>通信できる場所で一度開いてください。</p>',
       {headers:{'Content-Type':'text/html; charset=utf-8'},status:503});
+  }
+}
+
+// manifest はネットワーク優先（古い manifest が残ってショートカット等が更新されない事故の防止）
+async function netFirst(req){
+  try{
+    const res=await withTimeout(fetch(req,{cache:'no-store'}));
+    if(res && res.ok && res.type==='basic'){
+      const cp=res.clone();
+      caches.open(V).then(c=>c.put(req,cp)).catch(()=>{});
+      return res;
+    }
+    return (await caches.match(req)) || res;
+  }catch(err){
+    return (await caches.match(req)) || new Response('',{status:504});
   }
 }
 
