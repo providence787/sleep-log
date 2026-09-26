@@ -33,7 +33,7 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
       padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px}
 .tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;white-space:nowrap}
 .t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
-.t-ang{background:#24323a;color:#bcd7e6}
+.t-ang{background:#24323a;color:#bcd7e6}.t-rt{background:#1f3a2c;color:#a8e0bf}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--stop);display:inline-block;margin-left:6px}
 .sync{color:var(--sub);font-size:12px;text-align:center;min-height:16px}
 input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
@@ -56,10 +56,17 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .lvbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
        background:#222836;border:1px solid #2f3646;margin-bottom:6px;padding:13px}
 .lvbtn.on{background:#3d6b85;border-color:#6d8fa8}
+.lvbtn.done{background:#1f3a2c;border-color:#3f8f5f}
+.lvbtn .tm{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--sub);font-size:14px}
+.lvbtn.done .tm{color:#cfeedd}
+.step{font-size:16px;padding:15px 13px}
 .lvic{font-size:19px;width:26px;text-align:center}
 .drow{padding:10px 0;border-bottom:1px solid var(--line)}
 .dlab{font-size:14px;margin-bottom:7px}
 .num{margin:0}
+.linkbtn{display:block;text-align:center;text-decoration:none;color:#fff;background:#3b3f7a;
+         border-radius:14px;padding:15px;font-size:15px;margin-top:10px}
+.rrow{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -181,6 +188,22 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
+<!-- 朝ルーティンの修正（即時反映） -->
+<dialog id="rdlg"><div class="pad">
+  <div style="font-weight:700">朝ルーティン <span class="mini" id="rDate"></span></div>
+  <div class="center mini mt" id="rStat"></div>
+  <div id="rBody" class="mt"></div>
+  <label>YouTube（任意・もう一度タップで解除）</label>
+  <div class="chips" id="rYt"></div>
+  <input id="rNote" class="mt" placeholder="自由メモ（任意）">
+  <div class="center mini" id="rMsg"></div>
+  <div class="row mt">
+    <button class="small stop" id="rDel">削除</button>
+    <button class="small" id="rReopen">再開</button>
+    <button class="small" id="rClose" style="flex:2">閉じる</button>
+  </div>
+</div></dialog>
+
 <!-- 日次チェック（タップで即時反映） -->
 <dialog id="ddlg"><div class="pad">
   <div style="font-weight:700">日次チェック <span class="mini" id="dDate"></span></div>
@@ -227,6 +250,16 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）</label>
   <textarea id="cDaily"></textarea>
 
+  <label>朝ルーティンのステップ（3つめ: wake＝起床 / bowel＝排便完了 / padlet＝Padlet / end＝終了）</label>
+  <textarea id="cSteps"></textarea>
+
+  <label>YouTube の申告（1つだけ選ぶ）</label>
+  <textarea id="cYt" style="min-height:70px"></textarea>
+
+  <label>ルーティン画面のリンク（名前 / URL）</label>
+  <input id="cLinkName" placeholder="聴くClay">
+  <input id="cLink" placeholder="https://..." inputmode="url">
+
   <label>自動判定の基準</label>
   <div class="row" style="align-items:center">
     <span class="mini" style="flex:0 0 auto">起床目標</span><input type="time" id="cWake">
@@ -236,6 +269,10 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div class="row mt" style="align-items:center">
     <span class="mini" style="flex:0 0 auto">排便→退出 上限</span><input type="number" class="num" id="cToilet" inputmode="numeric">
     <span class="mini" style="flex:0 0 auto">分</span>
+  </div>
+  <div class="row mt" style="align-items:center">
+    <span class="mini" style="flex:0 0 auto">ルーティン自動終了</span><input type="number" class="num" id="cMaxH" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">時間</span>
   </div>
 
   <div class="center mini mt" id="cMsg"></div>
@@ -278,10 +315,29 @@ const DEFAULTS={
     {icon:'✍️',label:'聖書模写・黙想 A5 1枚'},
     {icon:'🙏',label:'Obsidian 朝の祈り（音声入力）'}
   ],
-  rt:{wake:'03:30',tol:10,toilet:40}
+  rt:{
+    wake:'03:30',tol:10,toilet:40,maxH:6,
+    link:'https://harvestclay.net/',linkName:'聴くClay',
+    steps:[
+      {icon:'⏰',label:'起床',opt:'wake'},
+      {icon:'🧴',label:'エネマ準備'},
+      {icon:'🚪',label:'トイレ入室'},
+      {icon:'🚽',label:'排便完了',opt:'bowel'},
+      {icon:'📖',label:'聖書読了'},
+      {icon:'🟣',label:'Obsidian 記入（デボーション）'},
+      {icon:'📌',label:'Padlet 投稿',opt:'padlet'},
+      {icon:'🏁',label:'退出＝終了',opt:'end'}
+    ],
+    yt:[
+      {icon:'🌱',label:'寄り道なし'},
+      {icon:'🔀',label:'少し寄り道'},
+      {icon:'🌀',label:'ザッピングした'}
+    ]
+  }
 };
 const PN_LIMIT=3;
 const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
+const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -290,6 +346,7 @@ const $=id=>document.getElementById(id);
 function on(id,ev,fn){const el=$(id);
   if(el) el.addEventListener(ev,fn); else console.warn('missing element:',id);}
 const isReal=v=>!!v&&v!=='...';
+const isAndroid=/Android/i.test(navigator.userAgent);
 
 const KEY='sleeplog.v2';
 const blank=()=>({items:[],settings:{url:'',token:''}});
@@ -321,6 +378,8 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const dayKeyOf=d=>{const x=new Date(d);x.setHours(x.getHours()-DAY_CUT);return dkey(x);};
 const shiftKey=(k,n)=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dkey(d);};
 const isOffStr=s=>typeof s==='string'&&s.startsWith('#');
+const atTime=(base,v)=>{const [H,M]=v.split(':').map(Number);
+  const d=new Date(base);d.setHours(H,M,0,0);return d.toISOString();};
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
 const CFG_KEYS=['title','levels','who','trig','tags','daily','rt'];
@@ -330,8 +389,9 @@ function cfgRec(){
     updatedAt:new Date(0).toISOString(),synced:false};db.items.push(c);}
   if(!c.data) c.data=clone(DEFAULTS);
   CFG_KEYS.forEach(k=>{if(c.data[k]===undefined) c.data[k]=clone(DEFAULTS[k]);});
-  ['wake','tol','toilet'].forEach(k=>{
-    if(c.data.rt[k]===undefined) c.data.rt[k]=DEFAULTS.rt[k];});
+  if(!c.data.rt||typeof c.data.rt!=='object') c.data.rt=clone(DEFAULTS.rt);
+  Object.keys(DEFAULTS.rt).forEach(k=>{
+    if(c.data.rt[k]===undefined) c.data.rt[k]=clone(DEFAULTS.rt[k]);});
   return c;
 }
 const C=()=>cfgRec().data;
@@ -375,7 +435,63 @@ function lvDef(r){
   return d||{icon:'·',label:r.levelKey||'(未設定)'};
 }
 
+/* ---------- 朝ルーティン: データ ---------- */
+const rtId=k=>'RT-'+k.replace(/-/g,'');
+function rtKeyOf(d){                   // 2:00〜3:00 に始めた場合もその日の朝として扱う
+  const x=new Date(d),h=x.getHours();
+  return (h>=RT_WIN[0]&&h<DAY_CUT)?dkey(x):dayKeyOf(x);
+}
+const inRtWin=iso=>{const h=new Date(iso).getHours();return h>=RT_WIN[0]&&h<RT_WIN[1];};
+const rtRec=k=>db.items.find(i=>i.kind==='routine'&&i.id===rtId(k)&&!i.deleted);
+const activeRt=()=>live().find(i=>i.kind==='routine'&&!i.end&&!i.closed);
+const stepDefs=()=>C().rt.steps.filter(s=>!s.off);
+const stepLabel=role=>{const d=C().rt.steps.find(s=>s.opt===role);return d?d.label:null;};
+function rtTarget(k){const [H,M]=(C().rt.wake||'03:30').split(':').map(Number);
+  const t=new Date(k+'T00:00:00');t.setHours(H,M,0,0);return t;}
+function startRoutine(startIso,sleepId){
+  const k=rtKeyOf(new Date(startIso)),id=rtId(k);
+  let r=db.items.find(i=>i.id===id);
+  if(r&&!r.deleted) return r;                      // 同じ朝のルーティンは1つだけ
+  const base={id,kind:'routine',dateKey:k,start:startIso,end:null,steps:{},
+    yt:'',note:'',sleepId:sleepId||null,closed:'',deleted:false};
+  if(r) Object.assign(r,base); else {r=base;db.items.push(r);}
+  touch(r);save();return r;
+}
+function autoCloseRoutines(){
+  const mh=(+C().rt.maxH||6)*3600000;let ch=false;
+  live().filter(i=>i.kind==='routine'&&!i.end&&!i.closed).forEach(r=>{
+    if(Date.now()-new Date(r.start)>mh){r.closed='auto';touch(r);ch=true;}});
+  if(ch) save();
+}
+function rtMetrics(r){
+  const B=stepLabel('bowel'),P=stepLabel('padlet'),st=r.steps||{};
+  const wakeDiff=Math.round((new Date(r.start)-rtTarget(r.dateKey))/60000);
+  const totalMin=r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):'';
+  const toiletMin=(B&&st[B]&&r.end)?Math.max(0,Math.round((new Date(r.end)-new Date(st[B]))/60000)):'';
+  const labels=stepDefs().filter(d=>d.opt!=='wake'&&d.opt!=='end').map(d=>d.label);
+  Object.keys(st).forEach(l=>{if(!labels.includes(l))labels.push(l);});
+  const stepText=labels.map(l=>l+'='+(st[l]?hhmm(new Date(st[l])):'')).join('|');
+  const y=C().rt.yt.find(x=>x.label===r.yt);
+  const ytText=r.yt?((y&&y.icon?y.icon+' ':'')+r.yt):'';
+  const status=r.closed==='done'?'完了':r.closed==='auto'?'未完':'進行中';
+  return {wakeDiff,totalMin,toiletMin,padletText:(P&&st[P])?'○':'',ytText,stepText,status};
+}
+function followSleep(s){                // 睡眠の終了時刻を直したらルーティンの起床も追従
+  if(!s||s.kind!=='sleep'||!s.end)return;
+  const r=live().find(i=>i.kind==='routine'&&i.sleepId===s.id);
+  if(r&&r.start!==s.end){r.start=s.end;touch(r);save();}
+}
+function linkHref(u){
+  if(!u) return '';
+  if(!isAndroid) return u;
+  try{const x=new URL(u);
+    return `intent://${x.host}${x.pathname}${x.search}#Intent;scheme=${x.protocol.replace(':','')};`+
+      `package=com.brave.browser;S.browser_fallback_url=${encodeURIComponent(u)};end`;
+  }catch(e){return u;}
+}
+
 /* ---------- 計測 ---------- */
+let pendingRt=null;
 function startRec(type){
   if(activeRec())return;
   const s=now();
@@ -385,12 +501,15 @@ function startRec(type){
 }
 function stopRec(){
   const a=activeRec(); if(!a)return;
-  a.end=now();touch(a);save();render();openEdit(a.id);sync(true);
+  a.end=now();touch(a);save();render();
+  pendingRt=a.type==='sleep'?a.id:null;
+  openEdit(a.id);sync(true);
 }
 
 /* ---------- 描画 ---------- */
 function render(){
-  const m=$('main'),a=activeRec(),pn=pnToday();
+  autoCloseRoutines();
+  const m=$('main'),a=activeRec(),r=activeRt(),pn=pnToday();
   $('today').textContent=`${dkey(new Date())} ／ PN ${pn}/${PN_LIMIT}`;
   $('warn').style.display=(db.settings.url&&db.settings.token)?'none':'';
   if(a){
@@ -400,21 +519,87 @@ function render(){
       <div class="row"><button class="small" id="bCancel">開始を取り消す</button></div>`;
     on('bStop','click',stopRec);
     on('bCancel','click',()=>{if(confirm('この計測を破棄しますか？')){drop(a);render();sync(true);}});
-    tick();
+  }else if(r){
+    renderRoutineCard(m,r);
   }else{
     const last=live().filter(i=>i.kind==='sleep'&&i.end)
       .sort((x,y)=>new Date(x.end)-new Date(y.end)).pop();
+    const tr=rtRec(rtKeyOf(new Date()));
+    let rtBtn='🌅 朝ルーティンを始める';
+    if(tr){const mt=rtMetrics(tr);
+      rtBtn=`🌅 今朝のルーティン：${mt.status}${mt.totalMin!==''?' '+durText(mt.totalMin):''}${mt.toiletMin!==''?' ／ 🚽'+mt.toiletMin+'分':''}`;}
     m.innerHTML=`<button class="big sleep" id="bS">😴 睡眠を開始</button>
       <button class="big pn" id="bP">⚡ パワーナップ開始${pn>=PN_LIMIT?'（本日上限）':`（残り${PN_LIMIT-pn}）`}</button>
-      <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(mins(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>`;
+      <div class="center sub">${last?`直近: ${last.type==='pn'?'PN':'睡眠'} ${durText(mins(last))}（${hhmm(new Date(last.start))}→${hhmm(new Date(last.end))}）`:'まだ記録がありません'}</div>
+      <button class="small mt" id="bRt" style="width:100%">${rtBtn}</button>`;
     on('bS','click',()=>startRec('sleep'));
     on('bP','click',()=>{if(pn>=PN_LIMIT&&!confirm('本日のPNは既に3回です。続けますか？'))return;
       startRec('pn');});
+    on('bRt','click',()=>{
+      if(tr){openRoutine(tr.id);return;}
+      startRoutine(now(),null);render();sync(true);});
   }
+  tick();
   $('btnAng').textContent=C().title+'を記録';
   renderDaySum();renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
   $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
+}
+function renderRoutineCard(m,r){
+  const rt=C().rt,wd=rtMetrics(r).wakeDiff;
+  m.innerHTML=`<div class="center sub">🌅 朝ルーティン　起床 ${hhmm(new Date(r.start))}（目標${wd>=0?'+':''}${wd}分）</div>
+    <div class="timer" id="rtTmr">00:00:00</div>
+    <div class="center sub" id="rtBowel" style="min-height:16px;font-size:14px"></div>
+    <div id="rtSteps" class="mt"></div>
+    <div class="mini mt" style="margin-bottom:6px">YouTube（任意・もう一度タップで解除）</div>
+    <div class="chips" id="rtYt"></div>
+    <a class="linkbtn" id="rtLink">🎧 ${rt.linkName||'リンク'} を開く</a>
+    <div class="row mt"><button class="small" id="rtEdit">時刻を修正</button>
+      <button class="small" id="rtAbort">未完で閉じる</button></div>
+    <div class="row mt"><button class="small sleep" id="rtS">😴 睡眠</button>
+      <button class="small pn" id="rtP">⚡ PN</button></div>`;
+  const box=$('rtSteps'),st=r.steps||{};
+  const addBtn=(icon,label,time,done,fn)=>{
+    const b=document.createElement('button');
+    b.className='lvbtn step'+(done?' done':'');
+    b.innerHTML=`<span class="lvic">${icon||''}</span><span>${label}</span><span class="tm">${time||'—'}</span>`;
+    b.addEventListener('click',fn);box.appendChild(b);
+  };
+  const defs=stepDefs();
+  defs.forEach(d=>{
+    if(d.opt==='wake'){addBtn(d.icon,d.label,hhmm(new Date(r.start)),true,()=>openRoutine(r.id));return;}
+    if(d.opt==='end'){addBtn(d.icon,d.label,'',false,()=>endRoutine(r));return;}
+    addBtn(d.icon,d.label,st[d.label]?hhmm(new Date(st[d.label])):'',!!st[d.label],()=>{
+      r.steps=r.steps||{};
+      if(r.steps[d.label]) delete r.steps[d.label]; else r.steps[d.label]=now();
+      touch(r);save();render();sync(true);
+    });
+  });
+  if(!defs.some(d=>d.opt==='end')) addBtn('🏁','ルーティン終了','',false,()=>endRoutine(r));
+  drawYt($('rtYt'),r,()=>{render();sync(true);});
+  const lk=$('rtLink');
+  if(lk){
+    if(rt.link){lk.href=linkHref(rt.link);
+      if(!isAndroid){lk.target='_blank';lk.rel='noopener';}}
+    else lk.style.display='none';
+  }
+  on('rtEdit','click',()=>openRoutine(r.id));
+  on('rtAbort','click',()=>{
+    if(!confirm('未完として閉じますか？（あとで時刻の修正・再開ができます）'))return;
+    r.closed='auto';touch(r);save();render();sync(true);});
+  on('rtS','click',()=>startRec('sleep'));
+  on('rtP','click',()=>startRec('pn'));
+}
+function endRoutine(r){r.end=now();r.closed='done';touch(r);save();render();sync(true);}
+function drawYt(box,r,after){
+  box.innerHTML='';
+  C().rt.yt.filter(y=>!y.off||y.label===r.yt).forEach(y=>{
+    const b=document.createElement('button');
+    b.className='chip'+(r.yt===y.label?' on a':'');
+    b.textContent=`${y.icon||''} ${y.label}`;
+    b.addEventListener('click',()=>{r.yt=(r.yt===y.label?'':y.label);touch(r);save();after();});
+    box.appendChild(b);
+  });
 }
 function renderDaySum(){
   const T=dayKeyOf(new Date()),e=dailyEval(T),y=dailyEval(shiftKey(T,-1));
@@ -432,7 +617,7 @@ function renderAng(){
     <br><span style="font-size:15px">${brk||'—'}</span>`;
 }
 function renderHist(){
-  const hk=live().filter(i=>i.kind==='sleep'||i.kind==='anger');
+  const hk=live().filter(i=>i.kind==='sleep'||i.kind==='anger'||i.kind==='routine');
   const keys=[...new Set(hk.map(i=>i.dateKey))].sort().reverse().slice(0,7);
   const h=$('hist'); h.innerHTML=keys.length?'':'<div class="sub">—</div>';
   keys.forEach(k=>{
@@ -443,17 +628,24 @@ function renderHist(){
          <b>${k.slice(5)}</b><span class="sub">睡眠計 ${durText(tot)}</span></div>`);
     rs.forEach(r=>{
       const el=document.createElement('div'); el.className='hist';
+      const dot=r.synced?'':'<span class="dot"></span>';
       if(r.kind==='sleep'){
         el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pnIndexOf(r):'睡眠'}</span>
           ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
           <span class="mini">${(r.tags||[]).map(tg=>tagDef(tg).icon||'').join('')}${r.note?' 📝':''}</span></span>
-          <span>${r.end?durText(mins(r)):''}${r.synced?'':'<span class="dot"></span>'}</span>`;
+          <span>${r.end?durText(mins(r)):''}${dot}</span>`;
         el.addEventListener('click',()=>openEdit(r.id));
+      }else if(r.kind==='routine'){
+        const mt=rtMetrics(r);
+        el.innerHTML=`<span><span class="tag t-rt">朝</span>${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):mt.status}
+          <span class="mini">${mt.toiletMin!==''?' 🚽'+mt.toiletMin+'分':''}${mt.padletText?' 📌':''}${r.note?' 📝':''}</span></span>
+          <span>${mt.totalMin!==''?durText(mt.totalMin):''}${dot}</span>`;
+        el.addEventListener('click',()=>openRoutine(r.id));
       }else{
         const l=lvDef(r);
         el.innerHTML=`<span><span class="tag t-ang">場面</span>${hhmm(new Date(r.start))}
           ${l.icon} ${l.label}<span class="mini"> ${r.who||''} ${(r.trig||[]).join('/')}</span></span>
-          <span>${r.synced?'':'<span class="dot"></span>'}</span>`;
+          <span>${dot}</span>`;
         el.addEventListener('click',()=>openAnger(r.id));
       }
       h.appendChild(el);
@@ -464,6 +656,7 @@ function kindName(r){
   if(r.kind==='anger') return '場面 '+lvDef(r).label;
   if(r.kind==='sleep') return r.type==='pn'?'PN':'睡眠';
   if(r.kind==='daily') return '日次 '+(r.dateKey||'');
+  if(r.kind==='routine') return '朝ルーティン '+(r.dateKey||'');
   return r.kind||'?';
 }
 function renderTrash(){
@@ -479,9 +672,18 @@ function renderTrash(){
     el.appendChild(b);t.appendChild(el);
   });
 }
-function tick(){const a=activeRec(),el=$('tmr');if(!a||!el)return;
-  const s=Math.floor((Date.now()-new Date(a.start))/1000);
-  el.textContent=`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;}
+const hms=s=>`${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+function tick(){
+  const a=activeRec(),el=$('tmr');
+  if(a&&el) el.textContent=hms(Math.floor((Date.now()-new Date(a.start))/1000));
+  const r=activeRt(),t2=$('rtTmr');
+  if(r&&t2) t2.textContent=hms(Math.max(0,Math.floor((Date.now()-new Date(r.start))/1000)));
+  const bw=$('rtBowel');
+  if(r&&bw){
+    const B=stepLabel('bowel'),b=B&&r.steps&&r.steps[B];
+    bw.textContent=b?`🚽 排便完了から ${Math.max(0,Math.floor((Date.now()-new Date(b))/60000))}分（目安 ${C().rt.toilet}分）`:'';
+  }
+}
 setInterval(tick,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();sync(true);}});
 
@@ -557,8 +759,71 @@ on('dlgDel','click',()=>{if(!cur||!confirm('この記録を削除しますか？
   drop(cur);cur=null;$('dlg').close();});
 on('dlg','close',()=>{
   if(cur){const v=$('dlgNote').value;
-    if(v!==(cur.note||'')){cur.note=v;touch(cur);save();}}
+    if(v!==(cur.note||'')){cur.note=v;touch(cur);save();}
+    followSleep(cur);}
+  if(pendingRt){                                   // 朝の「起きた」→ ルーティン開始
+    const s=db.items.find(i=>i.id===pendingRt);pendingRt=null;
+    if(s&&!s.deleted&&s.type==='sleep'&&s.end&&inRtWin(s.end)) startRoutine(s.end,s.id);
+  }
   cur=null;render();sync(true);});
+
+/* ---------- 朝ルーティンの修正（即時反映） ---------- */
+let rcur=null;
+function openRoutine(id){
+  rcur=db.items.find(i=>i.id===id); if(!rcur)return;
+  $('rNote').value=rcur.note||'';$('rMsg').textContent='';
+  drawRoutine();$('rdlg').showModal();
+}
+function drawRoutine(){
+  const r=rcur; if(!r)return;
+  const mt=rtMetrics(r);
+  $('rDate').textContent=r.dateKey;
+  $('rStat').textContent=`${mt.status}　所要 ${mt.totalMin===''?'—':durText(mt.totalMin)}　排便→退出 ${mt.toiletMin===''?'—':mt.toiletMin+'分'}`;
+  const body=$('rBody');body.innerHTML='';
+  const addRow=(label,iso,onSet,onClear)=>{
+    const el=document.createElement('div');el.className='rrow';
+    el.innerHTML=`<span style="flex:1;font-size:14px">${label}</span>`;
+    const inp=document.createElement('input');inp.type='time';
+    inp.value=iso?hhmm(new Date(iso)):'';
+    inp.addEventListener('change',()=>{if(!inp.value)return;
+      onSet(inp.value);touch(r);save();drawRoutine();renderHist();});
+    el.appendChild(inp);
+    const b=document.createElement('button');b.className='small';b.textContent='×';
+    b.style.flex='0 0 auto';
+    if(onClear&&iso) b.addEventListener('click',()=>{onClear();touch(r);save();drawRoutine();renderHist();});
+    else b.style.visibility='hidden';
+    el.appendChild(b);body.appendChild(el);
+  };
+  addRow('⏰ 起床（開始）',r.start,v=>{r.start=atTime(r.start,v);},null);
+  const st=r.steps||(r.steps={});
+  const labels=[];
+  stepDefs().filter(d=>d.opt!=='wake'&&d.opt!=='end').forEach(d=>{
+    labels.push(d.label);
+    addRow(`${d.icon||''} ${d.label}`,st[d.label],
+      v=>{st[d.label]=atTime(r.start,v);},()=>{delete st[d.label];});
+  });
+  Object.keys(st).filter(l=>!labels.includes(l)).forEach(l=>
+    addRow(l,st[l],v=>{st[l]=atTime(r.start,v);},()=>{delete st[l];}));
+  addRow('🏁 終了（退出）',r.end,v=>{r.end=atTime(r.start,v);r.closed='done';},
+    ()=>{r.end=null;r.closed='';});
+  drawYt($('rYt'),r,drawRoutine);
+  $('rReopen').style.display=(r.end||r.closed)?'':'none';
+}
+on('rNote','change',e=>{if(rcur){rcur.note=e.target.value;touch(rcur);save();}});
+on('rClose','click',()=>$('rdlg').close());
+on('rReopen','click',()=>{
+  const r=rcur; if(!r)return;
+  const mh=+C().rt.maxH||6;
+  if(Date.now()-new Date(r.start)>mh*3600000){
+    $('rMsg').textContent=`開始から${mh}時間を過ぎているため再開できません（時刻の修正はできます）`;return;}
+  r.end=null;r.closed='';touch(r);save();$('rdlg').close();
+});
+on('rDel','click',()=>{if(!rcur||!confirm('このルーティンの記録を削除しますか？'))return;
+  drop(rcur);rcur=null;$('rdlg').close();});
+on('rdlg','close',()=>{
+  if(rcur){const v=$('rNote').value;
+    if(v!==(rcur.note||'')){rcur.note=v;touch(rcur);save();}}
+  rcur=null;render();sync(true);});
 
 /* ---------- 場面ログ（保存を押すまで確定しない） ---------- */
 let acur=null,aNew=false;
@@ -683,13 +948,22 @@ function autoVal(key,k){
       &&new Date(i.end)>=lo&&new Date(i.end)<=hi)
       .sort((a,b)=>new Date(a.end)-new Date(b.end)).pop();
     if(!s) return null;
-    const [H,M]=(rt.wake||'03:30').split(':').map(Number);
-    const t=new Date(k+'T00:00:00');t.setHours(H,M,0,0);
-    const diff=Math.round((new Date(s.end)-t)/60000);
+    const diff=Math.round((new Date(s.end)-rtTarget(k))/60000);
     return {v:Math.abs(diff)<=(+rt.tol||0)?'ok':'ng',
       text:`${hhmm(new Date(s.end))}（${diff>=0?'+':''}${diff}分）`};
   }
-  return null;   // padlet / toilet は第2弾（朝ルーティン）で判定
+  if(key==='padlet'||key==='toilet'){
+    const r=rtRec(k); if(!r) return null;
+    const mt=rtMetrics(r);
+    if(key==='padlet'){
+      const P=stepLabel('padlet'); if(!P) return null;
+      if(mt.padletText) return {v:'ok',text:hhmm(new Date(r.steps[P]))};
+      return r.closed?{v:'ng',text:'記録なし'}:null;   // 進行中は未確定
+    }
+    if(mt.toiletMin==='') return null;
+    return {v:mt.toiletMin<=(+rt.toilet||0)?'ok':'ng',text:`${mt.toiletMin}分`};
+  }
+  return null;
 }
 function dailyEval(k,rec){
   if(rec===undefined) rec=dailyRec(k,false);
@@ -816,9 +1090,14 @@ function fillCfg(c){
   $('cTrig').value=toLines(c.trig);
   $('cTags').value=toLines(c.tags,'group');
   $('cDaily').value=toLines(c.daily,'opt');
+  $('cSteps').value=toLines(c.rt.steps,'opt');
+  $('cYt').value=toLines(c.rt.yt);
+  $('cLinkName').value=c.rt.linkName||'';
+  $('cLink').value=c.rt.link||'';
   $('cWake').value=c.rt.wake;
   $('cTol').value=c.rt.tol;
   $('cToilet').value=c.rt.toilet;
+  $('cMaxH').value=c.rt.maxH;
 }
 function openCfg(){fillCfg(C());$('cMsg').textContent='';$('cdlg').showModal();}
 on('btnCfg','click',openCfg);
@@ -830,6 +1109,8 @@ on('cReset','click',()=>{
 on('cSave','click',()=>{
   const lv=parseIcon($('cLevels').value,null);
   if(!lv.filter(x=>!x.off).length){$('cMsg').textContent='「自分の反応」は1つ以上必要です';return;}
+  const steps=parseIcon($('cSteps').value,'opt');
+  if(!steps.filter(x=>!x.off).length){$('cMsg').textContent='ルーティンのステップは1つ以上必要です';return;}
   const num=(id,d)=>{const v=$(id).value;return v===''||isNaN(+v)?d:+v;};
   const rec=cfgRec();
   rec.data=Object.assign({},rec.data,{           // 既存データとマージ（知らない項目を消さない）
@@ -842,7 +1123,12 @@ on('cSave','click',()=>{
     rt:Object.assign({},rec.data.rt,{
       wake:$('cWake').value||DEFAULTS.rt.wake,
       tol:num('cTol',DEFAULTS.rt.tol),
-      toilet:num('cToilet',DEFAULTS.rt.toilet)})
+      toilet:num('cToilet',DEFAULTS.rt.toilet),
+      maxH:Math.max(1,num('cMaxH',DEFAULTS.rt.maxH)),
+      steps:steps,
+      yt:parseIcon($('cYt').value,null),
+      link:$('cLink').value.trim(),
+      linkName:$('cLinkName').value.trim()})
   });
   touch(rec);save();$('cdlg').close();render();sync(true);
 });
@@ -861,6 +1147,8 @@ function forPush(i){
     const e=dailyEval(i.dateKey,i);
     o.doneCount=e.done;o.total=e.total;
     o.checkText=e.rows.map(r=>r.it.label+'='+r.mark).join('|');
+  }else if(i.kind==='routine'){
+    Object.assign(o,rtMetrics(i));
   }
   return o;
 }
