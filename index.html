@@ -389,6 +389,7 @@ const DEFAULTS={
 const PN_LIMIT=3;
 const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
 const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
+const SLEEP_EVE=18;              // 計測中の睡眠: この時刻以降に寝始めたら翌日扱い
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -424,6 +425,7 @@ const pad=n=>String(n).padStart(2,'0');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const hhmm=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const md=d=>`${d.getMonth()+1}/${d.getDate()}`;
 const fmt=d=>new Date(d).toLocaleString('ja-JP',
   {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -479,8 +481,27 @@ if(!db.migrated2){
 
 const live=()=>db.items.filter(i=>!i.deleted&&i.kind!=='config');
 const activeRec=()=>live().find(i=>i.kind==='sleep'&&!i.end);
-function logicalDate(type,iso){const d=new Date(iso);
-  if(type==='sleep')d.setHours(d.getHours()-12);return dkey(d);}
+/* 睡眠の日付 = 起きた日（終了時刻のカレンダー日付）。
+   計測中は仮の日付: 夜の睡眠は18時以降開始なら翌日、PNは開始日。 */
+function sleepKey(r){
+  if(r.end) return dkey(new Date(r.end));
+  const d=new Date(r.start);
+  if(r.type!=='pn'&&d.getHours()>=SLEEP_EVE) d.setDate(d.getDate()+1);
+  return dkey(d);
+}
+const keyOf=i=>i.kind==='sleep'?sleepKey(i):i.dateKey;
+let migNote='';
+if(!db.migrated3){                    // 過去の睡眠の日付を新ルールで付け直す（1回だけ）
+  let n=0;
+  db.items.forEach(i=>{
+    if(i.kind!=='sleep'||!i.start)return;
+    const k=sleepKey(i); if(i.dateKey===k)return;
+    i.dateKey=k;
+    if(!i.deleted){touch(i);n++;}
+  });
+  db.migrated3=true;save();
+  if(n) migNote=`睡眠の日付を「起きた日」に付け直しました（${n}件）。同期するとスプレッドシートにも反映されます`;
+}
 const mins=r=>r.end?Math.max(0,Math.round((new Date(r.end)-new Date(r.start))/60000)):0;
 const durText=m=>m>=60?`${Math.floor(m/60)}時間${pad(m%60)}分`:`${m}分`;
 function touch(r){r.updatedAt=now();r.synced=false;}
@@ -490,9 +511,9 @@ const drop=r=>{
   else{const i=db.items.indexOf(r);if(i>=0)db.items.splice(i,1);}
   save();};
 const pnToday=()=>live().filter(i=>i.kind==='sleep'&&i.type==='pn'
-  &&i.dateKey===dkey(new Date())).length;
+  &&sleepKey(i)===dkey(new Date())).length;
 const pnIndexOf=r=>live().filter(x=>x.kind==='sleep'&&x.type==='pn'
-  &&x.dateKey===r.dateKey&&new Date(x.start)<=new Date(r.start)).length;
+  &&sleepKey(x)===sleepKey(r)&&new Date(x.start)<=new Date(r.start)).length;
 const tagDef=lb=>C().tags.find(t=>t.label===lb)||{icon:'',label:lb};
 function lvDef(r){
   const L=C().levels;
@@ -575,12 +596,12 @@ function startRec(type){
   if(activeRec())return;
   const s=now();
   db.items.push({id:uid(),kind:'sleep',type,start:s,end:null,
-    dateKey:logicalDate(type,s),tags:[],note:'',updatedAt:s,synced:false});
+    dateKey:sleepKey({type,start:s,end:null}),tags:[],note:'',updatedAt:s,synced:false});
   save();render();sync(true);
 }
 function stopRec(){
   const a=activeRec(); if(!a)return;
-  a.end=now();touch(a);save();render();
+  a.end=now();a.dateKey=sleepKey(a);touch(a);save();render();
   pendingRt=a.type==='sleep'?a.id:null;
   openEdit(a.id);sync(true);
 }
@@ -698,10 +719,10 @@ function renderAng(){
 }
 function renderHist(){
   const hk=live().filter(i=>i.kind==='sleep'||i.kind==='anger'||i.kind==='routine');
-  const keys=[...new Set(hk.map(i=>i.dateKey))].sort().reverse().slice(0,7);
+  const keys=[...new Set(hk.map(keyOf))].sort().reverse().slice(0,7);
   const h=$('hist'); h.innerHTML=keys.length?'':'<div class="sub">—</div>';
   keys.forEach(k=>{
-    const rs=hk.filter(i=>i.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
+    const rs=hk.filter(i=>keyOf(i)===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
     const tot=rs.filter(i=>i.kind==='sleep').reduce((s,r)=>s+mins(r),0);
     h.insertAdjacentHTML('beforeend',
       `<div class="hist" style="border-bottom:0;padding-bottom:2px">
@@ -710,8 +731,9 @@ function renderHist(){
       const el=document.createElement('div'); el.className='hist';
       const dot=r.synced?'':'<span class="dot"></span>';
       if(r.kind==='sleep'){
+        const sd=new Date(r.start),pre=dkey(sd)!==k?md(sd)+' ':'';
         el.innerHTML=`<span><span class="tag ${r.type==='pn'?'t-pn':'t-sleep'}">${r.type==='pn'?'PN'+pnIndexOf(r):'睡眠'}</span>
-          ${hhmm(new Date(r.start))}→${r.end?hhmm(new Date(r.end)):'計測中'}
+          ${pre}${hhmm(sd)}→${r.end?hhmm(new Date(r.end)):'計測中'}
           <span class="mini">${esc((r.tags||[]).map(tg=>tagDef(tg).icon||'').join(''))}${r.note?' 📝':''}</span></span>
           <span>${r.end?durText(mins(r)):''}${dot}</span>`;
         el.addEventListener('click',()=>openEdit(r.id));
@@ -807,8 +829,9 @@ function drawTags(){
 function shift(f,n){
   const t=new Date(f==='s'?cur.start:(cur.end||new Date()));
   t.setMinutes(t.getMinutes()+n);
-  if(f==='s'){cur.start=t.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  if(f==='s') cur.start=t.toISOString();
   else cur.end=t.toISOString();
+  cur.dateKey=sleepKey(cur);
   touch(cur);drawDlg();
 }
 /* ±ボタン（睡眠: data-f=s/e、場面: data-f=a）長押しで連続 */
@@ -828,8 +851,9 @@ function setTime(f,v){
   if(!v||!cur)return; const [H,M]=v.split(':').map(Number);
   const base=new Date(f==='s'?cur.start:(cur.end||cur.start));
   base.setHours(H,M,0,0);
-  if(f==='s'){cur.start=base.toISOString();cur.dateKey=logicalDate(cur.type,cur.start);}
+  if(f==='s') cur.start=base.toISOString();
   else{if(base<new Date(cur.start))base.setDate(base.getDate()+1);cur.end=base.toISOString();}
+  cur.dateKey=sleepKey(cur);
   touch(cur);save();drawDlg();renderHist();
 }
 on('inS','change',e=>setTime('s',e.target.value));
@@ -1234,9 +1258,9 @@ function angBrk(A){const c={};
   A.forEach(a=>{const l=lvDef(a),k=l.icon||l.label;c[k]=(c[k]||0)+1;});
   return Object.keys(c).map(k=>k+c[k]).join(' ');}
 function dayData(k){
-  const s=live().filter(i=>i.kind==='sleep'&&i.type==='sleep'&&i.end&&rtKeyOf(new Date(i.end))===k)
+  const s=live().filter(i=>i.kind==='sleep'&&i.type==='sleep'&&i.end&&sleepKey(i)===k)
     .sort((a,b)=>mins(b)-mins(a))[0]||null;
-  const pn=live().filter(i=>i.kind==='sleep'&&i.type==='pn'&&i.end&&dayKeyOf(new Date(i.start))===k)
+  const pn=live().filter(i=>i.kind==='sleep'&&i.type==='pn'&&i.end&&sleepKey(i)===k)
     .sort((a,b)=>new Date(a.start)-new Date(b.start));
   const r=rtRec(k)||null,mt=r?rtMetrics(r):null,e=dailyEval(k);
   const dr=dailyRec(k,false),br=(dr&&!dr.deleted&&dr.brave)||null;
@@ -1252,7 +1276,8 @@ function mdDay(d,inc,h,withInbox){
   const s=d.s;
   if(s){
     const tg=(s.tags||[]).join(' ');
-    L.push(`- 睡眠: ${hhmm(new Date(s.start))}→${hhmm(new Date(s.end))} ${durText(mins(s))}${tg?' ／ '+tg:''}${s.note?' ／ '+mdTxt(s.note):''}`);
+    const sd=new Date(s.start),pre=dkey(sd)!==d.k?md(sd)+' ':'';
+    L.push(`- 睡眠（今朝まで）: ${pre}${hhmm(sd)}→${hhmm(new Date(s.end))} ${durText(mins(s))}${tg?' ／ '+tg:''}${s.note?' ／ '+mdTxt(s.note):''}`);
     L.push(`- 起床: ${hhmm(new Date(s.end))}（目標${sgn(d.wakeDiff)}分）`);
   }else L.push('- 睡眠: 記録なし');
   if(d.r){
@@ -1288,7 +1313,7 @@ function mdDay(d,inc,h,withInbox){
 function mdWeek(ks,inc){
   const D=ks.map(dayData),rt=C().rt;
   const L=[`## 週次ログ ${ks[0]}〜${ks[ks.length-1]}`,'',
-    '> ライフログアプリの自動出力。1日の区切りは 3:00。「未」は未記入（できなかった、ではない）。',''];
+    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティンの1日の区切りは 3:00。「未」は未記入（できなかった、ではない）。',''];
   const hd=['日付','起床','睡眠','PN','朝RT','トイレ','YT','日次','Brave'].concat(inc?[C().title]:[]);
   L.push('| '+hd.join(' | ')+' |');
   L.push('|'+hd.map(()=>'---').join('|')+'|');
@@ -1456,6 +1481,7 @@ on('cSave','click',()=>{
 function forPush(i){
   const o=Object.assign({},i); delete o.synced; delete o.everSynced;
   if(i.kind==='sleep'){
+    o.dateKey=sleepKey(i);                 // 常に新ルールの日付で送る
     o.minutes=mins(i);
     o.pnIndex=i.type==='pn'?pnIndexOf(i):'';
     o.tagText=(i.tags||[]).map(k=>{const t=tagDef(k);return (t.icon||'')+t.label;}).join(' ');
@@ -1557,6 +1583,7 @@ if(q==='anger') openAnger(null);
 if(q==='daily') openDaily(0);
 if(setupNote) msg(setupNote);
 if(shareNote) toast(shareNote+'　— 今は見ずに閉じて大丈夫です');
+else if(migNote) toast(migNote);
 sync(true);
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
