@@ -41,6 +41,7 @@ input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #2c33
       background:#0f131b;color:var(--fg);font:inherit;margin-bottom:8px}
 textarea{min-height:110px;font-size:13px;line-height:1.5}
 input[type=time]{width:auto;margin:0;padding:7px 9px}
+input[type=date]{width:auto;min-width:0;margin:0;padding:7px 9px;color-scheme:dark}
 details summary{color:var(--sub);font-size:13px;padding:6px 4px}
 dialog{background:var(--card);color:var(--fg);border:0;border-radius:16px;
        width:92%;max-width:440px;padding:0;max-height:88vh}
@@ -219,9 +220,10 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <button class="small seg" id="dToday">今日</button>
     <button class="small seg" id="dYest">昨日</button>
   </div>
+  <div class="mini mt" style="line-height:1.5">✗＝やるつもりだったができなかった（達成率に含む）。− 対象外＝その日は予定がなかった（休日・体調不良など。達成率の分母から外す）。もう一度タップで解除。</div>
   <div id="dList"></div>
 
-  <label>前日の Brave（デジタルウェルビーイング）<span id="dBraveDay"></span></label>
+  <label>この日の Brave（デジタルウェルビーイングの今日の値）</label>
   <div class="row" style="align-items:center">
     <input type="number" class="num" id="dBn" inputmode="numeric" placeholder="回数">
     <span class="mini" style="flex:0 0 auto">回</span>
@@ -257,6 +259,12 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <button class="small seg" id="e_yest">昨日</button>
     <button class="small seg" id="e_d7">直近7日</button>
     <button class="small seg" id="e_lastw">先週</button>
+    <button class="small seg" id="e_range">期間</button>
+  </div>
+  <div class="row mt" id="eRange" style="display:none;align-items:center">
+    <input type="date" id="eFrom" style="flex:1">
+    <span class="mini" style="flex:0 0 auto">〜</span>
+    <input type="date" id="eTo" style="flex:1">
   </div>
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg)">
     <input type="checkbox" id="eAng" style="width:auto;margin:0"> 場面ログを含める</label>
@@ -390,6 +398,7 @@ const PN_LIMIT=3;
 const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
 const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
 const SLEEP_EVE=18;              // 計測中の睡眠: この時刻以降に寝始めたら翌日扱い
+const EXP_MAX=92;                // エクスポートの期間指定の上限（日）
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -1071,6 +1080,7 @@ function autoVal(key,k){
   }
   return null;
 }
+/* 値: undefined=未記入 / 'na'=対象外（分母から除外） / 'ok' / 'ng' / 回数型は 0〜n の数値（0=できなかった） */
 function dailyEval(k,rec){
   if(rec===undefined) rec=dailyRec(k,false);
   if(rec&&rec.deleted) rec=null;
@@ -1116,10 +1126,11 @@ function drawDaily(){
     const el=document.createElement('div');el.className='drow';
     let sub='';
     if(r.ty.t==='auto') sub=(r.auto?`自動: ${r.auto.text}`:'自動: データなし')+(r.manual?' ／ ✎手動':'');
+    if(r.ty.t==='count') sub=`${r.ty.n}回で達成`;
     el.innerHTML=`<div class="dlab">${esc(r.it.icon||'')} ${esc(r.it.label)} <span class="mini">${esc(sub)}</span></div>`;
     const cs=document.createElement('div');cs.className='chips';
     const opts=r.ty.t==='count'
-      ? Array.from({length:r.ty.n},(_,i)=>[i+1,`${i+1}回`]).concat([['na','−対象外']])
+      ? [[0,'✗ 0回']].concat(Array.from({length:r.ty.n},(_,i)=>[i+1,`${i+1}回`])).concat([['na','− 対象外']])
       : [['ok','✓ できた'],['ng','✗ できなかった'],['na','− 対象外']];
     opts.forEach(([val,txt])=>{
       const b=document.createElement('button'),isOn=r.v===val;
@@ -1130,9 +1141,7 @@ function drawDaily(){
     });
     el.appendChild(cs);list.appendChild(el);
   });
-  const own=dailyRec(dk,false),ob=own&&!own.deleted&&own.brave;
-  $('dSum').textContent=`達成 ${e.done}/${e.total}　未記入 ${e.rows.length-e.filled}`+
-    (ob?`　／ この日の Brave ${ob.n??'-'}回・${ob.min==null?'-':durText(ob.min)}`:'');
+  $('dSum').textContent=`達成 ${e.done}/${e.total}　未記入 ${e.rows.length-e.filled}`;
   $('dInbox').textContent=`📥 インボックス ${inboxPending().length}件を処理`;
 }
 function setDaily(r,val){
@@ -1147,17 +1156,17 @@ function setDaily(r,val){
   }
   snapAuto(rec);touch(rec);save();drawDaily();
 }
+/* Brave は表示中の日（dk）の記録に保存。夜のチェックでその日の値を入れる */
 function drawBrave(){
-  const pk=shiftKey(dk,-1),pr=dailyRec(pk,false),b=(pr&&!pr.deleted&&pr.brave)||{};
-  $('dBraveDay').textContent=`（${pk.slice(5)} の値を入力）`;
+  const rec=dailyRec(dk,false),b=(rec&&!rec.deleted&&rec.brave)||{};
   $('dBn').value=b.n==null?'':b.n;
   $('dBh').value=b.min==null?'':Math.floor(b.min/60);
   $('dBm').value=b.min==null?'':b.min%60;
 }
 function setBrave(){
-  const pk=shiftKey(dk,-1),n=$('dBn').value,h=$('dBh').value,m=$('dBm').value;
+  const n=$('dBn').value,h=$('dBh').value,m=$('dBm').value;
   const empty=n===''&&h===''&&m==='';
-  const rec=dailyRec(pk,!empty); if(!rec)return;
+  const rec=dailyRec(dk,!empty); if(!rec)return;
   rec.brave=empty?null:{n:n===''?null:+n,
     min:(h===''&&m==='')?null:(+h||0)*60+(+m||0)};
   touch(rec);save();
@@ -1310,10 +1319,11 @@ function mdDay(d,inc,h,withInbox){
   }
   return L.join('\n');
 }
-function mdWeek(ks,inc){
+function mdWeek(ks,inc,title){
   const D=ks.map(dayData),rt=C().rt;
-  const L=[`## 週次ログ ${ks[0]}〜${ks[ks.length-1]}`,'',
-    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティンの1日の区切りは 3:00。「未」は未記入（できなかった、ではない）。',''];
+  const L=[`## ${title} ${ks[0]}〜${ks[ks.length-1]}（${ks.length}日）`,'',
+    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティンの1日の区切りは 3:00。'+
+    '日次チェックの記号: ✓＝できた、✗＝やるつもりだったができなかった、n/3＝回数、−＝対象外（その日は予定なし・達成率の分母から除外）、未＝未記入（できなかった、ではない）。Brave はその日のデジタルウェルビーイングの値。',''];
   const hd=['日付','起床','睡眠','PN','朝RT','トイレ','YT','日次','Brave'].concat(inc?[C().title]:[]);
   L.push('| '+hd.join(' | ')+' |');
   L.push('|'+hd.map(()=>'---').join('|')+'|');
@@ -1347,13 +1357,14 @@ function mdWeek(ks,inc){
   const yc={};R.forEach(d=>{if(d.r.yt)yc[d.r.yt]=(yc[d.r.yt]||0)+1;});
   const yn=R.filter(d=>!d.r.yt).length;
   L.push(`- YouTube 申告: ${Object.keys(yc).length?Object.keys(yc).map(k=>ytIcon(k)+k+' '+yc[k]).join(' ／ '):'—'}（未申告 ${yn}）`);
-  L.push('- 日次チェック（達成 / 記録した日 / 未記入）:');
+  L.push('- 日次チェック（達成 / 記録した日（対象外を除く） / 対象外 / 未記入）:');
   dItems().forEach(it=>{
-    let ok=0,rec=0,no=0;const cnt=[];
+    let ok=0,rec=0,na=0,no=0;const cnt=[];
     D.forEach(d=>{const r=d.e.rows.find(x=>x.it.label===it.label); if(!r)return;
       if(r.v===undefined) no++;
-      else if(r.v!=='na'){rec++; if(r.ok) ok++; if(r.ty.t==='count') cnt.push(+r.v||0);}});
-    L.push(`  - ${it.icon||''} ${it.label}: ${ok} / ${rec} / ${no}`+
+      else if(r.v==='na') na++;
+      else{rec++; if(r.ok) ok++; if(r.ty.t==='count') cnt.push(+r.v||0);}});
+    L.push(`  - ${it.icon||''} ${it.label}: ${ok} / ${rec} / ${na} / ${no}`+
       (cnt.length?`（平均 ${(cnt.reduce((a,b)=>a+b,0)/cnt.length).toFixed(1)}回）`:''));
   });
   const B=D.filter(d=>d.br);
@@ -1373,29 +1384,52 @@ function mdWeek(ks,inc){
   D.forEach(d=>{L.push('');L.push(mdDay(d,inc,'####',false));});
   return L.join('\n');
 }
-let ep='today';
+let ep='today',eCapped=false;
+function rangeKeys(){
+  const T=dayKeyOf(new Date());
+  let a=$('eFrom').value||shiftKey(T,-6),b=$('eTo').value||T;
+  if(a>b){const x=a;a=b;b=x;}
+  const out=[];eCapped=false;
+  for(let k=a;k<=b;k=shiftKey(k,1)){
+    if(out.length>=EXP_MAX){eCapped=true;break;}
+    out.push(k);
+  }
+  return out;
+}
 function periodKeys(p){
   const T=dayKeyOf(new Date());
   if(p==='today') return [T];
   if(p==='yest') return [shiftKey(T,-1)];
   if(p==='d7') return Array.from({length:7},(_,i)=>shiftKey(T,i-6));
+  if(p==='range') return rangeKeys();
   const off=(new Date(T+'T12:00:00').getDay()+6)%7,mon=shiftKey(T,-off-7);   // 先週の月〜日
   return Array.from({length:7},(_,i)=>shiftKey(mon,i));
 }
+const EXP_TITLE={d7:'直近7日のログ',lastw:'週次ログ',range:'期間ログ'};
 function drawExport(){
-  ['today','yest','d7','lastw'].forEach(p=>{const b=$('e_'+p);
+  ['today','yest','d7','lastw','range'].forEach(p=>{const b=$('e_'+p);
     if(b) b.className='small seg'+(ep===p?' on':'');});
+  $('eRange').style.display=ep==='range'?'':'none';
   const inc=$('eAng').checked,ks=periodKeys(ep);
-  $('eOut').value=ks.length===1?mdDay(dayData(ks[0]),inc,'##',true):mdWeek(ks,inc);
-  $('eMsg').textContent='';
+  $('eOut').value=ks.length===1?mdDay(dayData(ks[0]),inc,'##',true):mdWeek(ks,inc,EXP_TITLE[ep]||'ログ');
+  $('eMsg').textContent=ep==='range'&&eCapped?`長すぎるため先頭から${EXP_MAX}日分だけ出力しています`:'';
 }
 function openExport(){
+  const T=dayKeyOf(new Date());
   ep=new Date().getHours()>=12?'today':'yest';
   $('eAng').checked=db.settings.expAng!==false;
+  $('eFrom').value=db.settings.expFrom||shiftKey(T,-6);
+  $('eTo').value=db.settings.expTo||T;
   drawExport();$('edlg').showModal();
 }
+function saveRange(){
+  db.settings.expFrom=$('eFrom').value;db.settings.expTo=$('eTo').value;save();
+  if(ep==='range') drawExport();
+}
 on('btnExp','click',openExport);
-['today','yest','d7','lastw'].forEach(p=>on('e_'+p,'click',()=>{ep=p;drawExport();}));
+['today','yest','d7','lastw','range'].forEach(p=>on('e_'+p,'click',()=>{ep=p;drawExport();}));
+on('eFrom','change',saveRange);
+on('eTo','change',saveRange);
 on('eAng','change',()=>{db.settings.expAng=$('eAng').checked;save();drawExport();});
 on('eClose','click',()=>$('edlg').close());
 on('eCopy','click',async()=>{
