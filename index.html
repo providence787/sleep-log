@@ -24,6 +24,7 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
 .big{width:100%;font-size:21px;font-weight:700;padding:26px 14px;margin-bottom:10px;line-height:1.3}
 .sleep{background:var(--sleep)}.pn{background:var(--pn);color:#231a05}
 .stop{background:var(--stop)}.ang{background:var(--ang)}.okb{background:#2f7d43}
+.en{background:#6a45a3}
 .timer{font-size:44px;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;font-weight:700}
 .center{text-align:center}.mt{margin-top:10px}
 .row{display:flex;gap:6px}.row>*{flex:1}
@@ -35,6 +36,7 @@ button{font:inherit;color:#fff;border:0;border-radius:14px;padding:12px;backgrou
 .tag{font-size:11px;padding:2px 7px;border-radius:999px;margin-right:6px;white-space:nowrap}
 .t-sleep{background:#26305c;color:#aebcff}.t-pn{background:#4a3512;color:#ffcf8a}
 .t-ang{background:#24323a;color:#bcd7e6}.t-rt{background:#1f3a2c;color:#a8e0bf}
+.t-en{background:#352650;color:#dcc4ff}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--stop);display:inline-block;margin-left:6px}
 .sync{color:var(--sub);font-size:12px;text-align:center;min-height:16px}
 input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #2c3342;
@@ -71,6 +73,15 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .rrow{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--line)}
 .ibox{padding:12px 0;border-bottom:1px solid var(--line)}
 .ilink{color:#aebcff;text-decoration:none}
+.fun{display:flex;gap:4px;text-align:center;margin:12px 0 4px}
+.fun>div{flex:1;background:#1d2230;border-radius:10px;padding:8px 2px}
+.fun b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.fun .key{background:#2a1f40}
+.fun .key b{font-size:24px;color:#dcc4ff}
+.bar{height:8px;border-radius:4px;background:#242a36;overflow:hidden;margin:3px 0 9px}
+.bar>i{display:block;height:100%;background:#4a3a6e}
+.bar>i>i{display:block;height:100%;background:#b48cff}
+.prow{padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.45;word-break:break-word}
 </style>
 </head>
 <body>
@@ -89,6 +100,13 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div class="row mt">
     <button class="small" id="btnInbox">📥 インボックス</button>
     <button class="small" id="btnExp">📤 エクスポート</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row" style="align-items:center">
+    <div class="sub" id="enSum" style="flex:2"></div>
+    <button class="small en" id="btnEn" style="flex:1">🗣 EN</button>
   </div>
 </div>
 
@@ -251,6 +269,116 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <button class="small mt" id="iClose" style="width:100%">閉じる</button>
 </div></dialog>
 
+<!-- EN：言える島を広げる -->
+<dialog id="ndlg"><div class="pad">
+  <div style="font-weight:700">🗣 EN　言える島を広げる <span class="mini" id="nDate"></span></div>
+
+  <label>① 拾う：英語で言いたいこと（日英まぜてOK・音声入力で）</label>
+  <textarea id="nRaw" style="min-height:80px" placeholder="例: 3時半に起きるのは祈りの時間を確保したいから、because 夜は家族の時間だから"></textarea>
+  <div class="chips" id="nIsl"></div>
+  <button class="small en mt" id="nAdd" style="width:100%">拾う（保存）</button>
+  <div class="center mini mt" id="nMsg"></div>
+
+  <div class="fun" id="nFun"></div>
+  <div class="mini center" id="nFunSub"></div>
+  <div id="nBars" class="mt"></div>
+  <div class="mini" id="nAnki"></div>
+
+  <label>② 整える（Claude で添削）</label>
+  <div class="row">
+    <button class="small" id="nCopyFix">未添削をコピー</button>
+    <button class="small" id="nImpOpen">返答を取り込む</button>
+  </div>
+  <div id="nImpBox" style="display:none" class="mt">
+    <textarea id="nImp" placeholder="Claude の返答をそのまま貼り付け"></textarea>
+    <button class="small okb" id="nImpGo" style="width:100%">取り込む</button>
+  </div>
+
+  <label>③ 覚える（Anki）</label>
+  <button class="small" id="nTsv" style="width:100%">Anki 用 TSV をダウンロード</button>
+
+  <label>④ 使う ／ ⑤ 話せる</label>
+  <div class="row">
+    <button class="small" id="nWrite">✍️ 書いた</button>
+    <button class="small" id="nSpeak">🎙 話した</button>
+  </div>
+  <button class="small mt" id="nWeek" style="width:100%">📝 週次振り返りの素材をコピー（英語で書く用）</button>
+  <textarea id="nOut" class="mt" readonly style="display:none;min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
+
+  <details class="mt"><summary>フレーズ一覧（タップで修正）</summary>
+    <div class="chips mt" id="nFilt"></div>
+    <div id="nList"></div>
+  </details>
+  <details class="mt"><summary>書いた・話した記録（タップで修正）</summary><div id="nPieces"></div></details>
+  <button class="small mt" id="nClose" style="width:100%">閉じる</button>
+</div></dialog>
+
+<!-- フレーズの修正（保存で確定） -->
+<dialog id="phdlg"><div class="pad">
+  <div style="font-weight:700">フレーズ <span class="mini" id="phStage"></span></div>
+  <label>元メモ（日英まぜ）</label>
+  <textarea id="phRaw" style="min-height:70px"></textarea>
+  <label>英語（添削後）</label>
+  <textarea id="phEn" style="min-height:70px"></textarea>
+  <label>日本語の意味（Anki の表面）</label>
+  <input id="phJa">
+  <label>メモ（言い換え・注意点）</label>
+  <input id="phTip">
+  <label>島</label>
+  <div class="chips" id="phIsl"></div>
+  <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg)">
+    <input type="checkbox" id="phAnki" style="width:auto;margin:0"> Anki に入れた</label>
+  <div class="mini" id="phUsed"></div>
+  <div class="center mini mt" id="phMsg"></div>
+  <div class="row mt">
+    <button class="small stop" id="phDel">削除</button>
+    <button class="small" id="phCancel">キャンセル</button>
+    <button class="small okb" id="phSave" style="flex:2">保存</button>
+  </div>
+</div></dialog>
+
+<!-- 書いた・話した（保存で確定） -->
+<dialog id="pcdlg"><div class="pad">
+  <div style="font-weight:700" id="pcHead"></div>
+  <div class="row mt">
+    <button class="small seg" id="pcW">✍️ 書いた</button>
+    <button class="small seg" id="pcS">🎙 話した</button>
+  </div>
+  <label>日付</label>
+  <input type="date" id="pcDate">
+  <label>島（任意・選ぶとその島のフレーズだけ表示）</label>
+  <div class="chips" id="pcIsl"></div>
+  <div id="pcWBox">
+    <label>語数</label>
+    <div class="row" style="align-items:center">
+      <input type="number" class="num" id="pcWords" inputmode="numeric" placeholder="語数">
+      <button class="small" id="pcCount">本文から数える</button>
+    </div>
+  </div>
+  <div id="pcSBox">
+    <label>話した時間・詰まり（メモなしで話す）</label>
+    <div class="row" style="align-items:center">
+      <input type="number" class="num" id="pcMin" inputmode="numeric" placeholder="分">
+      <span class="mini" style="flex:0 0 auto">分</span>
+      <input type="number" class="num" id="pcStuck" inputmode="numeric" placeholder="詰まり">
+      <span class="mini" style="flex:0 0 auto">回</span>
+      <input type="number" class="num" id="pcJp" inputmode="numeric" placeholder="日本語">
+      <span class="mini" style="flex:0 0 auto">回</span>
+    </div>
+    <div class="mini mt">詰まり＝言葉が出ずに止まった回数 ／ 日本語＝日本語に逃げた回数</div>
+  </div>
+  <label>使ったフレーズ（タップで選択・もう一度で解除）</label>
+  <div class="chips" id="pcPh"></div>
+  <label>本文・メモ・録音のリンク（任意）</label>
+  <textarea id="pcText" style="min-height:90px"></textarea>
+  <div class="center mini" id="pcMsg"></div>
+  <div class="row mt">
+    <button class="small stop" id="pcDel">削除</button>
+    <button class="small" id="pcCancel">キャンセル</button>
+    <button class="small okb" id="pcSave" style="flex:2">保存</button>
+  </div>
+</div></dialog>
+
 <!-- エクスポート -->
 <dialog id="edlg"><div class="pad">
   <div style="font-weight:700">📤 エクスポート（Obsidian 用 Markdown）</div>
@@ -327,6 +455,9 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <span class="mini" style="flex:0 0 auto">時間</span>
   </div>
 
+  <label>EN の島（自分が話す話題。名前を変えると過去のフレーズとは別の島になります）</label>
+  <textarea id="cIsl" style="min-height:110px"></textarea>
+
   <div class="center mini mt" id="cMsg"></div>
   <div class="row mt">
     <button class="small" id="cReset">初期値に戻す</button>
@@ -392,6 +523,17 @@ const DEFAULTS={
       {icon:'🌀',label:'ザッピングした'}
     ],
     mig3:true
+  },
+  en:{
+    islands:[
+      {icon:'🌅',label:'朝ルーティンと信仰'},
+      {icon:'🔬',label:'研究・論文'},
+      {icon:'🤖',label:'AIの使い方'},
+      {icon:'🏠',label:'家族と日常'},
+      {icon:'💪',label:'健康と習慣'},
+      {icon:'🧭',label:'考え方・価値観'}
+    ],
+    goal:300
   }
 };
 const PN_LIMIT=3;
@@ -399,6 +541,7 @@ const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 �
 const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
 const SLEEP_EVE=18;              // 計測中の睡眠: この時刻以降に寝始めたら翌日扱い
 const EXP_MAX=92;                // エクスポートの期間指定の上限（日）
+const FIX_MAX=30;                // 添削に一度に出す件数
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -445,7 +588,7 @@ const atTime=(base,v)=>{const [H,M]=v.split(':').map(Number);
   const d=new Date(base);d.setHours(H,M,0,0);return d.toISOString();};
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
-const CFG_KEYS=['title','levels','who','trig','tags','daily','ievals','rt'];
+const CFG_KEYS=['title','levels','who','trig','tags','daily','ievals','rt','en'];
 function migrateCfg(c){               // 「排便完了」廃止 → トイレ入室→退出 に統合（1回だけ）
   const rt=c.data.rt; if(rt.mig3) return;
   let ch=false;
@@ -468,6 +611,9 @@ function cfgRec(){
   if(!c.data.rt||typeof c.data.rt!=='object') c.data.rt=clone(DEFAULTS.rt);
   Object.keys(DEFAULTS.rt).forEach(k=>{
     if(k!=='mig3'&&c.data.rt[k]===undefined) c.data.rt[k]=clone(DEFAULTS.rt[k]);});
+  if(!c.data.en||typeof c.data.en!=='object') c.data.en=clone(DEFAULTS.en);
+  if(!Array.isArray(c.data.en.islands)) c.data.en.islands=clone(DEFAULTS.en.islands);
+  if(!c.data.en.goal) c.data.en.goal=DEFAULTS.en.goal;
   migrateCfg(c);
   return c;
 }
@@ -599,6 +745,62 @@ function addInbox(title,url,src){
   db.items.push(r);save();return r;
 }
 
+/* ---------- EN: データ ---------- */
+const phAll=()=>live().filter(i=>i.kind==='phrase');
+const pcAll=()=>live().filter(i=>i.kind==='piece');
+const islDefs=()=>(C().en.islands||[]).filter(x=>!x.off);
+const islDef=lb=>(C().en.islands||[]).find(x=>x.label===lb)||{icon:'',label:lb};
+const islName=lb=>{if(!lb)return '（島なし）';const d=islDef(lb);return (d.icon?d.icon+' ':'')+lb;};
+const ST={raw:'未添削',fixed:'整えた',anki:'Anki済み',used:'使えた'};
+function stageOf(p){
+  if((p.usedIn||[]).length) return 'used';
+  if(p.ankiAt) return 'anki';
+  if(p.en) return 'fixed';
+  return 'raw';
+}
+const oneLine=s=>String(s||'').replace(/[\t\r\n]+/g,' ').replace(/\s{2,}/g,' ').trim();
+const wordCount=s=>(String(s||'').match(/[A-Za-z][A-Za-z'’-]*/g)||[]).length;
+function addPhrase(raw,isl){
+  const s=now();
+  const p={id:'PH'+uid(),kind:'phrase',start:s,end:null,dateKey:dayKeyOf(new Date()),
+    island:isl||'',raw:raw,en:'',ja:'',tip:'',fixedAt:null,ankiAt:null,usedIn:[],usedAt:null,
+    updatedAt:s,synced:false};
+  db.items.push(p);save();return p;
+}
+function relink(ids){                  // フレーズの「使えた」を書いた・話した記録から付け直す
+  const P=pcAll();
+  ids.forEach(id=>{
+    const p=db.items.find(i=>i.id===id&&i.kind==='phrase'); if(!p)return;
+    const u=P.filter(x=>(x.phrases||[]).includes(id)).map(x=>x.id);
+    if(JSON.stringify(u)!==JSON.stringify(p.usedIn||[])){
+      p.usedIn=u;
+      if(u.length&&!p.usedAt) p.usedAt=now();
+      if(!u.length) p.usedAt=null;
+      touch(p);
+    }
+  });
+}
+function enStats(){
+  const A=phAll(),P=pcAll(),T=dayKeyOf(new Date()),wk=shiftKey(T,-6);
+  const spokenIds=new Set(P.filter(x=>x.type==='speak').flatMap(x=>x.phrases||[]));
+  const W=P.filter(x=>x.dateKey>=wk&&x.dateKey<=T);
+  const Ww=W.filter(x=>x.type!=='speak'),Ws=W.filter(x=>x.type==='speak');
+  return {A,P,total:A.length,
+    fixed:A.filter(p=>p.en).length,
+    anki:A.filter(p=>p.ankiAt).length,
+    used:A.filter(p=>(p.usedIn||[]).length).length,
+    spoken:A.filter(p=>spokenIds.has(p.id)).length,
+    raw:A.filter(p=>!p.en).length,
+    today:A.filter(p=>p.dateKey===T).length,
+    wWrite:Ww.length,wWords:Ww.reduce((a,x)=>a+(+x.words||0),0),
+    wSpeak:Ws.length,wMin:Ws.reduce((a,x)=>a+(+x.mins||0),0)};
+}
+function pieceText(x){
+  const n=(x.phrases||[]).length;
+  if(x.type==='speak') return `🎙 話した ${x.mins??'-'}分（詰まり ${x.stuck??'-'}・日本語 ${x.jp??'-'}）${x.island?' '+x.island:''}${n?' フレーズ'+n:''}`;
+  return `✍️ 書いた ${x.words??'-'}語${x.island?' '+x.island:''}${n?' フレーズ'+n:''}`;
+}
+
 /* ---------- 計測 ---------- */
 let pendingRt=null;
 function startRec(type){
@@ -650,7 +852,7 @@ function render(){
   }
   tick();
   $('btnAng').textContent=C().title+'を記録';
-  renderDaySum();renderAng();renderHist();renderTrash();
+  renderDaySum();renderEnSum();renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
   $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
 }
@@ -716,6 +918,11 @@ function renderDaySum(){
     <br><span class="mini">昨日 ${y.done}/${y.total}（未記入 ${y.rows.length-y.filled}）</span>`;
   $('btnInbox').textContent=`📥 インボックス ${inboxPending().length}`;
 }
+function renderEnSum(){
+  const s=enStats();
+  $('enSum').innerHTML=`EN　今日 拾った ${s.today} ／ 未添削 ${s.raw}
+    <br><span class="mini">7日: 書いた ${s.wWrite}本・${s.wWords}語 ／ 話した ${s.wSpeak}回 ／ 使えた計 ${s.used}</span>`;
+}
 function renderAng(){
   const t=dkey(new Date()),d7=new Date();d7.setDate(d7.getDate()-6);
   const wk=live().filter(i=>i.kind==='anger'&&i.dateKey>=dkey(d7));
@@ -769,6 +976,8 @@ function kindName(r){
   if(r.kind==='daily') return '日次 '+(r.dateKey||'');
   if(r.kind==='routine') return '朝ルーティン '+(r.dateKey||'');
   if(r.kind==='inbox') return '📥 '+(r.title||'');
+  if(r.kind==='phrase') return '🗣 '+String(r.en||r.raw||'').slice(0,40);
+  if(r.kind==='piece') return '🗣 '+(r.type==='speak'?'話した ':'書いた ')+(r.dateKey||'');
   return r.kind||'?';
 }
 function renderTrash(){
@@ -780,7 +989,9 @@ function renderTrash(){
     el.innerHTML=`<span class="mini">${r.start?fmt(r.start):''}　${esc(kindName(r))}</span>`;
     const b=document.createElement('button');b.className='small';b.textContent='復元';
     b.style.flex='0 0 auto';
-    b.addEventListener('click',()=>{r.deleted=false;touch(r);save();render();sync(true);});
+    b.addEventListener('click',()=>{r.deleted=false;touch(r);
+      if(r.kind==='piece') relink(r.phrases||[]);
+      save();render();sync(true);});
     el.appendChild(b);t.appendChild(el);
   });
 }
@@ -903,7 +1114,7 @@ function drawRoutine(){
     inp.addEventListener('change',()=>{if(!inp.value)return;
       onSet(inp.value);touch(r);save();drawRoutine();renderHist();});
     el.appendChild(inp);
-    const b=document.createElement('button');b.className='small';b.textContent='×';
+    const b=document.createElement('button');b.className='small';b.textContent='消す';
     b.style.flex='0 0 auto';
     if(onClear&&iso) b.addEventListener('click',()=>{onClear();touch(r);save();drawRoutine();renderHist();});
     else b.style.visibility='hidden';
@@ -1249,6 +1460,295 @@ on('idlg','close',()=>{
   render();sync(true);
 });
 
+/* ---------- EN 画面 ---------- */
+let nFilter='raw';
+function curIsl(){const v=db.settings.enIsl||'';return islDefs().some(x=>x.label===v)?v:'';}
+function islChips(box,val,fn){
+  box.innerHTML='';
+  const defs=islDefs().slice();
+  if(val&&!defs.some(x=>x.label===val)) defs.push(islDef(val));
+  defs.forEach(x=>{
+    const b=document.createElement('button');
+    b.className='chip'+(val===x.label?' on a':'');
+    b.textContent=`${x.icon||''} ${x.label}`;
+    b.addEventListener('click',()=>fn(val===x.label?'':x.label));
+    box.appendChild(b);
+  });
+}
+function ankiLine(){
+  const T=dayKeyOf(new Date()),ks=Array.from({length:7},(_,i)=>shiftKey(T,i-6));
+  const its=dItems().filter(it=>dType(it).t==='count'&&/anki/i.test(it.label));
+  if(!its.length) return '';
+  const E=ks.map(k=>dailyEval(k));
+  return 'Anki（直近7日・記録した日の平均）: '+its.map(it=>{
+    const v=E.map(e=>e.rows.find(r=>r.it.label===it.label))
+      .filter(r=>r&&typeof r.v==='number').map(r=>r.v);
+    return `${it.label.replace(/^Anki\s*/i,'')} ${v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1)+'回':'—'}`;
+  }).join(' ／ ');
+}
+function openEn(){
+  $('nMsg').textContent='';$('nOut').style.display='none';
+  drawEn();
+  if(!$('ndlg').open) $('ndlg').showModal();
+}
+function drawEn(){
+  $('nDate').textContent=dayKeyOf(new Date());
+  islChips($('nIsl'),curIsl(),v=>{db.settings.enIsl=v;save();drawEn();});
+  const s=enStats();
+  const cell=(n,l,key)=>`<div class="${key?'key':''}"><b>${n}</b><span class="mini">${l}</span></div>`;
+  $('nFun').innerHTML=cell(s.total,'①拾った')+cell(s.fixed,'②整えた')+cell(s.anki,'③Anki')+
+    cell(s.used,'④使えた',true)+cell(s.spoken,'⑤話せた',true);
+  $('nFunSub').textContent=`直近7日: 書いた ${s.wWrite}本・${s.wWords}語 ／ 話した ${s.wSpeak}回・${s.wMin}分`;
+  const by={};
+  s.A.forEach(p=>{const k=p.island||'';by[k]=by[k]||{n:0,u:0};by[k].n++;
+    if((p.usedIn||[]).length) by[k].u++;});
+  const keys=islDefs().map(x=>x.label)
+    .concat(Object.keys(by).filter(k=>!islDefs().some(x=>x.label===k)));
+  const mx=Math.max(1,...keys.map(k=>(by[k]||{n:0}).n));
+  $('nBars').innerHTML=keys.map(k=>{const b=by[k]||{n:0,u:0};
+    return `<div class="mini" style="display:flex;justify-content:space-between"><span>${esc(islName(k))}</span><span>使えた ${b.u} / ${b.n}</span></div>
+      <div class="bar"><i style="width:${b.n/mx*100}%"><i style="width:${b.n?b.u/b.n*100:0}%"></i></i></div>`;
+  }).join('');
+  $('nAnki').textContent=ankiLine();
+  $('nCopyFix').textContent=`未添削をコピー（${s.raw}）`;
+  $('nTsv').textContent=`Anki 用 TSV をダウンロード（${tsvTargets().length}件）`;
+
+  const cnt={raw:0,fixed:0,anki:0,used:0};s.A.forEach(p=>cnt[stageOf(p)]++);
+  const F=$('nFilt');F.innerHTML='';
+  ['raw','fixed','anki','used','all'].forEach(k=>{
+    const b=document.createElement('button');
+    b.className='chip'+(nFilter===k?' on':'');
+    b.textContent=k==='all'?`すべて ${s.total}`:`${ST[k]} ${cnt[k]}`;
+    b.addEventListener('click',()=>{nFilter=k;drawEn();});
+    F.appendChild(b);
+  });
+  const L=$('nList');L.innerHTML='';
+  const list=s.A.filter(p=>nFilter==='all'||stageOf(p)===nFilter)
+    .sort((a,b)=>new Date(b.start)-new Date(a.start)).slice(0,60);
+  if(!list.length) L.innerHTML='<div class="sub center mt">ありません</div>';
+  list.forEach(p=>{
+    const el=document.createElement('div');el.className='prow';
+    const dot=p.synced?'':'<span class="dot"></span>';
+    el.innerHTML=`<div><span class="tag t-en">${ST[stageOf(p)]}</span><span class="mini">${md(new Date(p.start))} ${esc(islName(p.island))}</span>${dot}</div>
+      <div>${esc(p.en||p.raw)}</div>${p.en?`<div class="mini">${esc(p.raw)}</div>`:''}`;
+    el.addEventListener('click',()=>openPhrase(p.id));
+    L.appendChild(el);
+  });
+  const PL=$('nPieces');PL.innerHTML='';
+  const ps=s.P.slice().sort((a,b)=>b.dateKey.localeCompare(a.dateKey)||new Date(b.start)-new Date(a.start)).slice(0,30);
+  if(!ps.length) PL.innerHTML='<div class="sub">ありません</div>';
+  ps.forEach(x=>{const el=document.createElement('div');el.className='hist';
+    el.innerHTML=`<span><span class="mini">${x.dateKey.slice(5)}</span> ${esc(pieceText(x))}</span><span>${x.synced?'':'<span class="dot"></span>'}</span>`;
+    el.addEventListener('click',()=>openPiece(x.id,null));PL.appendChild(el);});
+}
+async function copyText(t,msgEl){
+  try{await navigator.clipboard.writeText(t);msgEl.textContent='コピーしました';return true;}
+  catch(e){const o=$('nOut');o.value=t;o.style.display='';o.select();
+    msgEl.textContent='下の欄を長押ししてコピーしてください';return false;}
+}
+on('btnEn','click',openEn);
+on('nAdd','click',()=>{
+  const v=$('nRaw').value.trim();
+  if(!v){$('nMsg').textContent='言いたいことを入れてください';return;}
+  addPhrase(v,curIsl());$('nRaw').value='';
+  $('nMsg').textContent=`拾いました（未添削 ${phAll().filter(p=>!p.en).length}）`;
+  drawEn();renderEnSum();sync(true);
+});
+on('nClose','click',()=>$('ndlg').close());
+on('ndlg','close',()=>{
+  const v=$('nRaw').value.trim(); if(v){addPhrase(v,curIsl());$('nRaw').value='';}
+  render();sync(true);
+});
+
+/* ② 整える：Claude 用の指示文を作る／返答を取り込む */
+const fixTargets=()=>phAll().filter(p=>!p.en)
+  .sort((a,b)=>new Date(a.start)-new Date(b.start)).slice(0,FIX_MAX);
+function fixPrompt(){
+  const T=fixTargets(); if(!T.length) return '';
+  return ['以下は、私が英語で言いたいことのメモです（日本語と英語が混ざっています）。',
+    'それぞれを、私が実際の会話や文章でそのまま使える自然な英語に整えてください。',
+    '条件: 意味を変えない／教科書的すぎず、ネイティブが日常的に使う言い方／1〜2文に収める。',
+    '出力は下の形式だけにして、1行に1件、説明は書かないでください（「 | 」区切り）:',
+    'ID | 英語 | 日本語の意味（短く） | ひとことメモ（言い換え・注意点。なければ空）','',
+    ...T.map(p=>`${p.id} | ${oneLine(p.raw)}${p.island?'  ［話題: '+p.island+'］':''}`)].join('\n');
+}
+on('nCopyFix','click',()=>{
+  const t=fixPrompt();
+  if(!t){$('nMsg').textContent='未添削はありません';return;}
+  copyText(t,$('nMsg'));
+});
+on('nImpOpen','click',()=>{const b=$('nImpBox');b.style.display=b.style.display==='none'?'':'none';});
+on('nImpGo','click',()=>{
+  let n=0,miss=0;
+  $('nImp').value.split('\n').forEach(line=>{
+    const m=line.replace(/^[\s\-*>|`]+/,'').match(/^(PH[0-9a-z]+)\s*[|｜\t]\s*(.*)$/i); if(!m)return;
+    const p=db.items.find(i=>i.id===m[1]&&i.kind==='phrase'&&!i.deleted); if(!p){miss++;return;}
+    const f=m[2].split(/\s*[|｜\t]\s*/).map(x=>x.trim().replace(/^\*+|\*+$/g,''));
+    if(!f[0])return;
+    p.en=f[0];p.ja=f[1]||p.ja||'';p.tip=f[2]||'';p.fixedAt=now();touch(p);n++;
+  });
+  save();
+  if(n){$('nImp').value='';$('nImpBox').style.display='none';}
+  $('nMsg').textContent=n?`${n}件を取り込みました${miss?'（見つからないID '+miss+'件）':''}`
+    :'取り込める行がありませんでした（「ID | 英語 | 日本語」の形か確認してください）';
+  drawEn();sync(true);
+});
+
+/* ③ Anki 用 TSV */
+const tsvTargets=()=>phAll().filter(p=>p.en&&!p.ankiAt);
+on('nTsv','click',()=>{
+  const T=tsvTargets();
+  if(!T.length){$('nMsg').textContent='Anki に出すフレーズはありません（整えたものだけが対象）';return;}
+  const tg=s=>String(s||'').replace(/\s+/g,'_');
+  const h=s=>esc(oneLine(s));
+  const body=T.map(p=>[h(p.ja||p.raw),h(p.en)+(p.tip?'<br><small>'+h(p.tip)+'</small>':''),
+    'EN'+(p.island?' '+tg('島::'+p.island):'')].join('\t')).join('\n');
+  const blob=new Blob(['#separator:tab\n#html:true\n#tags column:3\n'+body+'\n'],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`anki-en-${dayKeyOf(new Date())}.txt`;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  const t=now();T.forEach(p=>{p.ankiAt=t;touch(p);});save();
+  $('nMsg').textContent=`${T.length}件をダウンロードしました（Anki済みにしました）`;
+  drawEn();sync(true);
+});
+
+/* フレーズの修正（保存で確定） */
+let phCur=null;
+function openPhrase(id){
+  const src=db.items.find(i=>i.id===id); if(!src)return;
+  phCur=clone(src);
+  $('phRaw').value=phCur.raw||'';$('phEn').value=phCur.en||'';
+  $('phJa').value=phCur.ja||'';$('phTip').value=phCur.tip||'';
+  $('phAnki').checked=!!phCur.ankiAt;$('phMsg').textContent='';
+  $('phStage').textContent=ST[stageOf(phCur)]+' ／ '+fmt(phCur.start);
+  $('phUsed').textContent=(phCur.usedIn||[]).length?`使った記録 ${phCur.usedIn.length}件`:'';
+  drawPhIsl();$('phdlg').showModal();
+}
+function drawPhIsl(){islChips($('phIsl'),phCur.island||'',v=>{phCur.island=v;drawPhIsl();});}
+function closePhrase(){phCur=null;$('phdlg').close();}
+on('phCancel','click',closePhrase);
+on('phdlg','cancel',e=>{e.preventDefault();closePhrase();});
+on('phSave','click',()=>{
+  if(!phCur)return;
+  const raw=$('phRaw').value.trim(),en=$('phEn').value.trim();
+  if(!raw&&!en){$('phMsg').textContent='元メモか英語のどちらかが必要です';return;}
+  const t=db.items.find(i=>i.id===phCur.id); if(!t){closePhrase();return;}
+  const changed=en&&en!==(t.en||'');
+  Object.assign(t,{raw,en,ja:$('phJa').value.trim(),tip:$('phTip').value.trim(),
+    island:phCur.island||'',
+    ankiAt:$('phAnki').checked?(t.ankiAt||now()):null,
+    fixedAt:en?(changed?now():t.fixedAt):null});
+  touch(t);save();closePhrase();
+});
+on('phDel','click',()=>{
+  if(!phCur||!confirm('このフレーズを削除しますか？'))return;
+  const t=db.items.find(i=>i.id===phCur.id); if(t)drop(t);
+  closePhrase();
+});
+on('phdlg','close',()=>{if($('ndlg').open)drawEn();render();sync(true);});
+
+/* ④⑤ 書いた・話した（保存で確定） */
+let pcCur=null,pcNew=false;
+function openPiece(id,type){
+  if(id){const s=db.items.find(i=>i.id===id); if(!s)return; pcCur=clone(s);pcNew=false;}
+  else{const s=now();
+    pcCur={id:'PC'+uid(),kind:'piece',type,start:s,end:null,dateKey:dayKeyOf(new Date()),
+      island:curIsl(),words:null,mins:null,stuck:null,jp:null,phrases:[],text:'',
+      updatedAt:s,synced:false};
+    pcNew=true;}
+  pcCur.phrases=pcCur.phrases||[];
+  $('pcDate').value=pcCur.dateKey;$('pcText').value=pcCur.text||'';
+  $('pcWords').value=pcCur.words??'';$('pcMin').value=pcCur.mins??'';
+  $('pcStuck').value=pcCur.stuck??'';$('pcJp').value=pcCur.jp??'';
+  $('pcMsg').textContent='';$('pcDel').style.display=pcNew?'none':'';
+  drawPiece();$('pcdlg').showModal();
+}
+function drawPiece(){
+  const sp=pcCur.type==='speak';
+  $('pcHead').textContent=(sp?'🎙 話した':'✍️ 書いた')+(pcNew?'（新規）':'');
+  $('pcW').className='small seg'+(sp?'':' on');
+  $('pcS').className='small seg'+(sp?' on':'');
+  $('pcWBox').style.display=sp?'none':'';
+  $('pcSBox').style.display=sp?'':'none';
+  islChips($('pcIsl'),pcCur.island||'',v=>{pcCur.island=v;drawPiece();});
+  const box=$('pcPh');box.innerHTML='';
+  const sel=pcCur.phrases;
+  const cand=phAll().filter(p=>p.en&&(!pcCur.island||p.island===pcCur.island||sel.includes(p.id)))
+    .sort((a,b)=>(sel.includes(b.id)-sel.includes(a.id))||new Date(b.start)-new Date(a.start))
+    .slice(0,40);
+  if(!cand.length) box.innerHTML='<div class="mini">整えたフレーズがまだありません</div>';
+  cand.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='chip'+(sel.includes(p.id)?' on a':'');
+    b.textContent=String(p.en).slice(0,60);
+    b.addEventListener('click',()=>{
+      pcCur.phrases=sel.includes(p.id)?sel.filter(x=>x!==p.id):sel.concat(p.id);drawPiece();});
+    box.appendChild(b);
+  });
+}
+const numv=id=>{const v=$(id).value;return v===''||isNaN(+v)?null:+v;};
+function closePiece(){pcCur=null;$('pcdlg').close();}
+on('nWrite','click',()=>openPiece(null,'write'));
+on('nSpeak','click',()=>openPiece(null,'speak'));
+on('pcW','click',()=>{if(pcCur){pcCur.type='write';drawPiece();}});
+on('pcS','click',()=>{if(pcCur){pcCur.type='speak';drawPiece();}});
+on('pcCount','click',()=>{$('pcWords').value=wordCount($('pcText').value)||'';});
+on('pcCancel','click',closePiece);
+on('pcdlg','cancel',e=>{e.preventDefault();closePiece();});
+on('pcSave','click',()=>{
+  if(!pcCur)return;
+  const sp=pcCur.type==='speak',txt=$('pcText').value;
+  Object.assign(pcCur,{dateKey:$('pcDate').value||pcCur.dateKey,text:txt,
+    words:sp?null:(numv('pcWords')??(wordCount(txt)||null)),
+    mins:sp?numv('pcMin'):null,stuck:sp?numv('pcStuck'):null,jp:sp?numv('pcJp'):null});
+  if(!sp&&!pcCur.words&&!txt.trim()&&!pcCur.phrases.length){
+    $('pcMsg').textContent='語数・本文・フレーズのどれかを入れてください';return;}
+  if(sp&&pcCur.mins==null&&!pcCur.phrases.length){
+    $('pcMsg').textContent='話した時間か、使ったフレーズを入れてください';return;}
+  let old=[];
+  if(pcNew){pcCur.updatedAt=now();pcCur.synced=false;db.items.push(pcCur);}
+  else{const t=db.items.find(i=>i.id===pcCur.id);
+    if(t){old=t.phrases||[];Object.assign(t,pcCur);touch(t);}}
+  relink([...new Set(old.concat(pcCur.phrases))]);
+  save();closePiece();
+});
+on('pcDel','click',()=>{
+  if(!pcCur||pcNew){closePiece();return;}
+  if(!confirm('この記録を削除しますか？'))return;
+  const t=db.items.find(i=>i.id===pcCur.id),ids=(t&&t.phrases)||[];
+  if(t)drop(t);
+  relink(ids);save();closePiece();
+});
+on('pcdlg','close',()=>{if($('ndlg').open)drawEn();render();sync(true);});
+
+/* 週次振り返りの素材（英語で書く用） */
+function enWeekMd(){
+  const T=dayKeyOf(new Date()),ks=Array.from({length:7},(_,i)=>shiftKey(T,i-6));
+  const inK=k=>k>=ks[0]&&k<=T;
+  const A=phAll().filter(p=>inK(p.dateKey)),P=pcAll().filter(x=>inK(x.dateKey));
+  const L=[`## Weekly reflection material ${ks[0]}〜${T}`,'',
+    `> これを見ながら英語で約${C().en.goal}語の振り返りを書く。書けたら EN 画面の「✍️ 書いた」で記録し、使ったフレーズを選ぶ。`,'',
+    '### Prompts',
+    '- What went well this week, and why?',
+    '- What did not go as planned? What got in the way?',
+    '- What did I notice about my sleep, my mornings, and my faith?',
+    '- One thing I will try next week.','',
+    "### This week's phrases"];
+  const F=A.filter(p=>p.en);
+  if(F.length) F.forEach(p=>L.push(`- ${mdTxt(p.en)}${p.ja?' — '+mdTxt(p.ja):''}`));
+  else L.push('- （なし）');
+  const R=A.filter(p=>!p.en);
+  if(R.length){L.push('','### Not yet in English（まだ英語にしていないこと）');
+    R.forEach(p=>L.push('- '+mdTxt(p.raw)));}
+  if(P.length){L.push('','### Output this week');
+    P.forEach(x=>L.push(`- ${x.dateKey.slice(5)} ${pieceText(x)}`));}
+  L.push('','### Life log（要点）');
+  L.push(mdWeek(ks,false,'直近7日のログ').split('\n### 日別')[0]);
+  return L.join('\n');
+}
+on('nWeek','click',()=>copyText(enWeekMd(),$('nMsg')));
+
 /* ---------- エクスポート（Obsidian 用 Markdown） ---------- */
 const WD=['日','月','火','水','木','金','土'];
 const wdOf=k=>WD[new Date(k+'T12:00:00').getDay()];
@@ -1277,8 +1777,10 @@ function dayData(k){
     .sort((a,b)=>new Date(a.start)-new Date(b.start));
   const inA=inboxAll().filter(i=>dayKeyOf(new Date(i.start))===k);
   const inD=inboxAll().filter(i=>i.eval&&i.doneAt&&dayKeyOf(new Date(i.doneAt))===k);
+  const ph=phAll().filter(p=>p.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
+  const pc=pcAll().filter(x=>x.dateKey===k);
   const wakeDiff=s?Math.round((new Date(s.end)-rtTarget(k))/60000):null;
-  return {k,s,pn,r,mt,e,br,ang,inA,inD,wakeDiff};
+  return {k,s,pn,r,mt,e,br,ang,inA,inD,ph,pc,wakeDiff};
 }
 function mdDay(d,inc,h,withInbox){
   const L=[`${h} ライフログ ${d.k}（${wdOf(d.k)}）`];
@@ -1307,6 +1809,10 @@ function mdDay(d,inc,h,withInbox){
   }
   L.push(`- 日次 ${d.e.done}/${d.e.total}: `+d.e.rows.map(x=>markSym(x)+' '+x.it.label).join(' ／ '));
   if(d.br) L.push(`- Brave: ${d.br.n??'-'}回 ・ ${d.br.min==null?'-':durText(d.br.min)}`);
+  if(d.ph.length||d.pc.length){
+    L.push(`- EN: 拾った ${d.ph.length}`+(d.pc.length?' ／ '+d.pc.map(pieceText).join(' ／ '):''));
+    d.ph.forEach(p=>L.push(`  - ${p.en?mdTxt(p.en):'（未添削）'+mdTxt(p.raw)}`));
+  }
   if(inc&&d.ang.length){
     L.push(`- ${C().title}: ${d.ang.length}件`);
     d.ang.forEach(a=>{const l=lvDef(a);
@@ -1322,7 +1828,7 @@ function mdDay(d,inc,h,withInbox){
 function mdWeek(ks,inc,title){
   const D=ks.map(dayData),rt=C().rt;
   const L=[`## ${title} ${ks[0]}〜${ks[ks.length-1]}（${ks.length}日）`,'',
-    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティンの1日の区切りは 3:00。'+
+    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティン・ENの1日の区切りは 3:00。'+
     '日次チェックの記号: ✓＝できた、✗＝やるつもりだったができなかった、n/3＝回数、−＝対象外（その日は予定なし・達成率の分母から除外）、未＝未記入（できなかった、ではない）。Brave はその日のデジタルウェルビーイングの値。',''];
   const hd=['日付','起床','睡眠','PN','朝RT','トイレ','YT','日次','Brave'].concat(inc?[C().title]:[]);
   L.push('| '+hd.join(' | ')+' |');
@@ -1370,6 +1876,10 @@ function mdWeek(ks,inc,title){
   const B=D.filter(d=>d.br);
   const bn=avg(B.filter(d=>d.br.n!=null).map(d=>d.br.n)),bm=avg(B.filter(d=>d.br.min!=null).map(d=>d.br.min));
   L.push(`- Brave: 記録 ${B.length}日 ／ 平均 ${bn??'—'}回・${bm==null?'—':durText(bm)}`);
+  const PH=D.flatMap(d=>d.ph),PC=D.flatMap(d=>d.pc);
+  const pw=PC.filter(x=>x.type!=='speak'),psp=PC.filter(x=>x.type==='speak');
+  L.push(`- EN: 拾った ${PH.length}（整えた ${PH.filter(p=>p.en).length}） ／ 書いた ${pw.length}本・${pw.reduce((a,x)=>a+(+x.words||0),0)}語`+
+    ` ／ 話した ${psp.length}回・${psp.reduce((a,x)=>a+(+x.mins||0),0)}分 ／ 使ったフレーズ ${new Set(PC.flatMap(x=>x.phrases||[])).size}`);
   if(inc){const A=D.flatMap(d=>d.ang);L.push(`- ${C().title}: 計 ${A.length}件 ${A.length?angBrk(A):''}`);}
   const IA=D.flatMap(d=>d.inA),ID=D.flatMap(d=>d.inD),ec={};
   ID.forEach(i=>{ec[i.eval]=(ec[i.eval]||0)+1;});
@@ -1472,6 +1982,7 @@ function fillCfg(c){
   $('cTol').value=c.rt.tol;
   $('cToilet').value=c.rt.toilet;
   $('cMaxH').value=c.rt.maxH;
+  $('cIsl').value=toLines((c.en&&c.en.islands)||DEFAULTS.en.islands);
 }
 function openCfg(){fillCfg(C());$('cMsg').textContent='';$('cdlg').showModal();}
 on('btnCfg','click',openCfg);
@@ -1487,6 +1998,8 @@ on('cSave','click',()=>{
   if(!steps.filter(x=>!x.off).length){$('cMsg').textContent='ルーティンのステップは1つ以上必要です';return;}
   const iev=parseIcon($('cIev').value,null);
   if(!iev.filter(x=>!x.off).length){$('cMsg').textContent='インボックスの評価は1つ以上必要です';return;}
+  const isl=parseIcon($('cIsl').value,null);
+  if(!isl.filter(x=>!x.off).length){$('cMsg').textContent='EN の島は1つ以上必要です';return;}
   const num=(id,d)=>{const v=$(id).value;return v===''||isNaN(+v)?d:+v;};
   const rec=cfgRec();
   rec.data=Object.assign({},rec.data,{           // 既存データとマージ（知らない項目を消さない）
@@ -1506,7 +2019,8 @@ on('cSave','click',()=>{
       yt:parseIcon($('cYt').value,null),
       link:$('cLink').value.trim(),
       linkName:$('cLinkName').value.trim(),
-      mig3:true})
+      mig3:true}),
+    en:Object.assign({},rec.data.en,{islands:isl})
   });
   touch(rec);save();$('cdlg').close();render();sync(true);
 });
@@ -1530,6 +2044,8 @@ function forPush(i){
     Object.assign(o,rtMetrics(i));
   }else if(i.kind==='inbox'){
     o.evalText=i.eval?((evDef(i.eval).icon||'')+' '+i.eval).trim():'';
+  }else if(i.kind==='phrase'){
+    o.stageText=ST[stageOf(i)];
   }
   return o;
 }
@@ -1558,6 +2074,7 @@ async function sync(silent){
       if(r){r.synced=true;r.everSynced=true;}});
     merge(j.items);save();render();
     if($('idlg').open) drawInbox();
+    if($('ndlg').open&&!$('phdlg').open&&!$('pcdlg').open) drawEn();
     msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
   }catch(e){msg('同期失敗：'+e.message+'（記録は端末に保持）');}
   finally{busy=false;}
@@ -1615,6 +2132,7 @@ if((q==='sleep'||q==='pn')&&!activeRec()) startRec(q);
 render();
 if(q==='anger') openAnger(null);
 if(q==='daily') openDaily(0);
+if(q==='en') openEn();
 if(setupNote) msg(setupNote);
 if(shareNote) toast(shareNote+'　— 今は見ずに閉じて大丈夫です');
 else if(migNote) toast(migNote);
