@@ -83,6 +83,17 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .bar>i{display:block;height:100%;background:#4a3a6e}
 .bar>i>i{display:block;height:100%;background:#b48cff}
 .prow{padding:10px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.45;word-break:break-word}
+.rpr{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:baseline;
+     padding:7px 2px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.4}
+.rpr .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.rpr .p{color:var(--sub);font-variant-numeric:tabular-nums;text-align:right;font-size:12px}
+.rpr .d{font-variant-numeric:tabular-nums;text-align:right;font-size:12px;min-width:52px}
+.rpr.hd{font-size:11px;color:var(--sub);border-bottom:0;padding-bottom:0}
+.rpr.hd .v{font-weight:400}
+.good{color:#7ee2a0}.bad{color:#ff9a8a}
+.rgh{font-size:12px;color:#aebcff;margin:14px 0 2px}
+.ins{padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.5}
+.exp{background:#1d2a22;border-radius:12px;padding:12px;font-size:14px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -102,6 +113,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <button class="small" id="btnInbox">📥 インボックス</button>
     <button class="small" id="btnExp">📤 エクスポート</button>
   </div>
+  <button class="small mt" id="btnRep" style="width:100%">📊 レポート（記録を見て次の実験を決める）</button>
 </div>
 
 <div class="card">
@@ -406,6 +418,43 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
+<!-- レポート（入力は即時反映） -->
+<dialog id="rpdlg"><div class="pad">
+  <div style="font-weight:700">📊 レポート <span class="mini" id="rpRange"></span></div>
+  <div class="row mt">
+    <button class="small seg" id="rp_lastw">先週</button>
+    <button class="small seg" id="rp_d7">直近7日</button>
+    <button class="small seg" id="rp_range">期間</button>
+  </div>
+  <div class="row mt" id="rpRangeBox" style="display:none;align-items:center">
+    <input type="date" id="rpFrom" style="flex:1">
+    <span class="mini" style="flex:0 0 auto">〜</span>
+    <input type="date" id="rpTo" style="flex:1">
+  </div>
+  <div id="rpPrev"></div>
+
+  <label>① 数字（前期＝すぐ前の同じ長さの期間）</label>
+  <div id="rpNums"></div>
+
+  <label>② 気づき（アプリが簡単なルールで出しています）</label>
+  <div id="rpIns"></div>
+
+  <label>③ 次の実験を1つ（一行で。次のレポートの冒頭とメイン画面に出ます）</label>
+  <input id="rpExp" placeholder="例: 21時にスマホを充電器に置く">
+
+  <label>④ Claude で文章のレポートにする</label>
+  <button class="small okb" id="rpCopy" style="width:100%">Claude 用にコピー（データ＋指示文）</button>
+  <textarea id="rpOut" class="mt" readonly style="display:none;min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
+  <textarea id="rpMemo" class="mt" placeholder="Claude の返事（または自分の振り返り）を貼り付け"></textarea>
+  <button class="small" id="rpMemoSave" style="width:100%">振り返りメモとして保存</button>
+  <div class="center mini mt" id="rpMemoAt"></div>
+  <div class="center mini mt" id="rpMsg"></div>
+
+  <details class="mt"><summary>過去のレポート・実験一覧（タップで開く）</summary><div id="rpHist"></div></details>
+
+  <button class="small mt" id="rpClose" style="width:100%">閉じる</button>
+</div></dialog>
+
 <!-- カスタマイズ -->
 <dialog id="cdlg"><div class="pad">
   <div style="font-weight:700">項目をカスタマイズ</div>
@@ -426,13 +475,13 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <label>睡眠メモのタグ（3つめに wake と書いた行は排他選択）</label>
   <textarea id="cTags"></textarea>
 
-  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）</label>
+  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）。目安は7〜9項目、新しい項目は2週間のお試しにしてレポートで残すか決める</label>
   <textarea id="cDaily"></textarea>
 
   <label>朝ルーティンのステップ（3つめ: wake＝起床 / toilet＝トイレ入室 / padlet＝Padlet / end＝退出・終了）</label>
   <textarea id="cSteps"></textarea>
 
-  <label>YouTube の申告（1つだけ選ぶ）</label>
+  <label>YouTube の申告（1つだけ選ぶ。1つめが「寄り道なし」としてレポートで使われます）</label>
   <textarea id="cYt" style="min-height:70px"></textarea>
 
   <label>インボックスの評価（1つだけ選ぶ）</label>
@@ -542,11 +591,13 @@ const PN_LIMIT=3;
 const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
 const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
 const SLEEP_EVE=18;              // 計測中の睡眠: この時刻以降に寝始めたら翌日扱い
-const EXP_MAX=92;                // エクスポートの期間指定の上限（日）
+const EXP_MAX=92;                // エクスポート・レポートの期間指定の上限（日）
 const FIX_MAX=30;                // 添削に一度に出す件数
 const UNDO_MIN=60;               // 終了を取り消して計測中に戻せる時間（分）
 const CMD_GAP=3;                 // 同じショートカットをこの分数以内に続けて開いたら無視
 const STOP_WAIT=6000;            // 開始・終了の前に他端末の記録を確認する最大待ち時間（ms）
+const SHORT_SLEEP=360;           // レポートの気づき: この分数未満を「短い睡眠」とする
+const EXP_SHOW=14;               // メイン画面に実験を表示する日数（レポート期間の終わりから）
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -591,8 +642,10 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const dayKeyOf=d=>{const x=new Date(d);x.setHours(x.getHours()-DAY_CUT);return dkey(x);};
 const shiftKey=(k,n)=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dkey(d);};
 const isOffStr=s=>typeof s==='string'&&s.startsWith('#');
-const atTime=(base,v)=>{const [H,M]=v.split(':').map(Number);
-  const d=new Date(base);d.setHours(H,M,0,0);return d.toISOString();};
+const atTime=(base,v,afterBase)=>{const [H,M]=v.split(':').map(Number);
+  const d=new Date(base);d.setHours(H,M,0,0);
+  if(afterBase&&d<new Date(base)) d.setDate(d.getDate()+1);
+  return d.toISOString();};
 const canSync=()=>!!(db.settings.url&&db.settings.token);
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
@@ -940,8 +993,10 @@ function drawYt(box,r,after){
 }
 function renderDaySum(){
   const T=dayKeyOf(new Date()),e=dailyEval(T),y=dailyEval(shiftKey(T,-1));
+  const ex=activeExp();
   $('daySum').innerHTML=`日次チェック　今日 ${e.done}/${e.total}
-    <br><span class="mini">昨日 ${y.done}/${y.total}（未記入 ${y.rows.length-y.filled}）</span>`;
+    <br><span class="mini">昨日 ${y.done}/${y.total}（未記入 ${y.rows.length-y.filled}）</span>`+
+    (ex?`<br><span class="mini" style="color:#a8e0bf">🧪 実験: ${esc(ex.exp)}</span>`:'');
   $('btnInbox').textContent=`📥 インボックス ${inboxPending().length}`;
 }
 function renderEnSum(){
@@ -1004,6 +1059,7 @@ function kindName(r){
   if(r.kind==='inbox') return '📥 '+(r.title||'');
   if(r.kind==='phrase') return '🗣 '+String(r.en||r.raw||'').slice(0,40);
   if(r.kind==='piece') return '🗣 '+(r.type==='speak'?'話した ':'書いた ')+(r.dateKey||'');
+  if(r.kind==='report') return '📊 レポート '+(r.from||'')+'〜'+(r.to||'');
   return r.kind||'?';
 }
 function renderTrash(){
@@ -1017,6 +1073,7 @@ function renderTrash(){
     b.style.flex='0 0 auto';
     b.addEventListener('click',()=>{r.deleted=false;touch(r);
       if(r.kind==='piece') relink(r.phrases||[]);
+      if(r.kind==='phrase') relink([r.id]);
       save();render();sync(true);});
     el.appendChild(b);t.appendChild(el);
   });
@@ -1159,17 +1216,17 @@ function drawRoutine(){
     else b.style.visibility='hidden';
     el.appendChild(b);body.appendChild(el);
   };
-  addRow('⏰ 起床（開始）',r.start,v=>{r.start=atTime(r.start,v);},null);
+  addRow('⏰ 起床（開始）',r.start,v=>{r.start=atTime(r.start,v,false);},null);
   const st=r.steps||(r.steps={});
   const labels=[];
   stepDefs().filter(d=>d.opt!=='wake'&&d.opt!=='end').forEach(d=>{
     labels.push(d.label);
     addRow(`${d.icon||''} ${d.label}`,st[d.label],
-      v=>{st[d.label]=atTime(r.start,v);},()=>{delete st[d.label];});
+      v=>{st[d.label]=atTime(r.start,v,true);},()=>{delete st[d.label];});
   });
   Object.keys(st).filter(l=>!labels.includes(l)).forEach(l=>
-    addRow(l,st[l],v=>{st[l]=atTime(r.start,v);},()=>{delete st[l];}));
-  addRow('🏁 退出（終了）',r.end,v=>{r.end=atTime(r.start,v);r.closed='done';},
+    addRow(l,st[l],v=>{st[l]=atTime(r.start,v,true);},()=>{delete st[l];}));
+  addRow('🏁 退出（終了）',r.end,v=>{r.end=atTime(r.start,v,true);r.closed='done';},
     ()=>{r.end=null;r.closed='';});
   drawYt($('rYt'),r,drawRoutine);
   $('rReopen').style.display=(r.end||r.closed)?'':'none';
@@ -1794,7 +1851,7 @@ const wdOf=k=>WD[new Date(k+'T12:00:00').getDay()];
 const sgn=n=>(n>=0?'+':'')+n;
 const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
 const mdTxt=s=>String(s||'').replace(/[\[\]|]/g,' ').replace(/\s+/g,' ').trim();
-const ilink=i=>i.url?`${mdTxt(i.title)||'link'}`:mdTxt(i.title);
+const ilink=i=>i.url?`[${mdTxt(i.title)||'link'}](${i.url})`:mdTxt(i.title);
 function markSym(r){
   if(r.v===undefined) return '未';
   if(r.v==='na') return '−';
@@ -1987,17 +2044,268 @@ on('eCopy','click',async()=>{
   catch(e){$('eOut').select();$('eMsg').textContent='選択しました。長押しでコピーしてください';}
 });
 
+/* ---------- レポート（kind='report'・期間ごとに1件） ---------- */
+const MARK={ok:'✓ できた',part:'△ 一部',ng:'✗ できなかった'};
+const keysBetween=(a,b)=>{const o=[];for(let k=a;k<=b&&o.length<EXP_MAX;k=shiftKey(k,1))o.push(k);return o;};
+const repId=(a,b)=>'RP-'+a.replace(/-/g,'')+'-'+b.replace(/-/g,'');
+const repAll=()=>live().filter(i=>i.kind==='report');
+function repRec(a,b,create){
+  let r=db.items.find(i=>i.id===repId(a,b));
+  if(!r&&create){
+    r={id:repId(a,b),kind:'report',from:a,to:b,dateKey:b,
+      start:new Date(b+'T12:00:00').toISOString(),end:null,
+      exp:'',mark:'',result:'',memo:'',memoAt:null,updatedAt:now(),synced:false};
+    db.items.push(r);
+  }
+  if(r&&r.deleted){if(create)r.deleted=false;else return null;}
+  return r||null;
+}
+const prevRep=a=>repAll().filter(r=>r.to<a&&r.exp)
+  .sort((x,y)=>x.to.localeCompare(y.to)||(x.updatedAt||'').localeCompare(y.updatedAt||'')).pop()||null;
+function activeExp(){
+  const T=dayKeyOf(new Date());
+  return repAll().filter(r=>r.exp&&T<=shiftKey(r.to,EXP_SHOW))
+    .sort((x,y)=>x.to.localeCompare(y.to)||(x.updatedAt||'').localeCompare(y.updatedAt||'')).pop()||null;
+}
+const hm=v=>v==null?'—':pad(Math.floor(v/60))+':'+pad(v%60);
+const dm=v=>v==null?'—':durText(v);
+const pct=x=>Math.round(x*100)+'%';
+function repStats(ks){
+  const D=ks.map(dayData),tol=+C().rt.tol||0,yt0=(C().rt.yt[0]||{}).label;
+  const W=D.filter(d=>d.s),wd=W.map(d=>d.wakeDiff);
+  let sdv=null;
+  if(wd.length>=2){const m=wd.reduce((x,y)=>x+y,0)/wd.length;
+    sdv=Math.round(Math.sqrt(wd.reduce((x,y)=>x+(y-m)**2,0)/wd.length));}
+  const R=D.filter(d=>d.r&&d.mt.totalMin!==''),Y=D.filter(d=>d.r&&d.r.yt);
+  let ok=0,tot=0;const items={};
+  dItems().forEach(it=>{items[it.label]={ok:0,n:0,no:0,auto:dType(it).t==='auto'};});
+  D.forEach(d=>d.e.rows.forEach(r=>{const x=items[r.it.label]; if(!x)return;
+    if(r.v===undefined){x.no++;return;}
+    if(r.v==='na')return;
+    x.n++;tot++; if(r.ok){x.ok++;ok++;}}));
+  const B=D.filter(d=>d.br&&d.br.min!=null);
+  const A=D.flatMap(d=>d.ang),wc={};
+  A.forEach(a=>{if(a.who)wc[a.who]=(wc[a.who]||0)+1;});
+  const topWho=Object.keys(wc).sort((a,b)=>wc[b]-wc[a])[0]||'';
+  return {D,days:ks.length,
+    wake:avg(W.map(d=>{const e=new Date(d.s.end);return e.getHours()*60+e.getMinutes();})),
+    wakeSd:sdv,wakeOk:W.length?W.filter(d=>Math.abs(d.wakeDiff)<=tol).length:null,wakeN:W.length,
+    sleep:avg(W.map(d=>mins(d.s))),
+    pn:D.reduce((a,d)=>a+d.pn.length,0),
+    rt:avg(R.map(d=>d.mt.totalMin)),
+    detour:Y.length?Math.round(Y.filter(d=>d.r.yt!==yt0).length/Y.length*100):null,
+    rate:tot?Math.round(ok/tot*100):null,items,
+    brave:avg(B.map(d=>d.br.min)),
+    ang:A.length,topWho,topWhoN:wc[topWho]||0,
+    ph:D.reduce((a,d)=>a+d.ph.length,0)};
+}
+function dayRate(d,skipWake){
+  const rs=d.e.rows.filter(r=>r.v!==undefined&&r.v!=='na'&&!(skipWake&&r.ty.t==='auto'&&r.ty.key==='wake'));
+  return rs.length?rs.filter(r=>r.ok).length/rs.length:null;
+}
+function insights(S,P){
+  const out=[],tol=+C().rt.tol||0,D=S.D,mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const grp=f=>{const a=[],b=[];D.forEach(d=>{const g=f(d),r=dayRate(d,true);
+    if(g===null||r===null)return;(g?a:b).push(r);});return [a,b];};
+  let [a,b]=grp(d=>d.s?Math.abs(d.wakeDiff)<=tol:null);
+  if(a.length>=2&&b.length>=2) out.push(`起床が目標どおりだった日は日次チェックの達成率 ${pct(mean(a))}、外れた日は ${pct(mean(b))}（${a.length}日 / ${b.length}日）`);
+  [a,b]=grp(d=>d.s?mins(d.s)<SHORT_SLEEP:null);
+  if(a.length>=2&&b.length>=2) out.push(`睡眠${SHORT_SLEEP/60}時間未満の日の達成率 ${pct(mean(a))}、それ以上の日は ${pct(mean(b))}`);
+  const sa=D.filter(d=>d.s),s1=sa.filter(d=>mins(d.s)<SHORT_SLEEP),s2=sa.filter(d=>mins(d.s)>=SHORT_SLEEP);
+  if(S.ang&&s1.length>=2&&s2.length>=2){
+    const f=x=>(x.reduce((p,d)=>p+d.ang.length,0)/x.length).toFixed(1);
+    out.push(`${C().title}は、睡眠が短い日 平均${f(s1)}件、それ以外の日 ${f(s2)}件`);
+  }
+  const yt0=(C().rt.yt[0]||{}).label,R=D.filter(d=>d.r&&d.r.yt&&d.mt.totalMin!=='');
+  const y1=R.filter(d=>d.r.yt===yt0),y2=R.filter(d=>d.r.yt!==yt0);
+  if(y1.length>=2&&y2.length>=2)
+    out.push(`朝ルーティンの所要は、YouTube 寄り道なしの日 平均${avg(y1.map(d=>d.mt.totalMin))}分、寄り道した日 ${avg(y2.map(d=>d.mt.totalMin))}分`);
+  const rated=D.map(d=>({d,r:dayRate(d,false)})).filter(x=>x.r!==null);
+  if(rated.length>=3){const w=rated.reduce((p,x)=>x.r<p.r?x:p);
+    out.push(`いちばん崩れたのは ${w.d.k.slice(5)}（${wdOf(w.d.k)}）達成率 ${pct(w.r)}`);}
+  if(P) Object.keys(S.items).forEach(l=>{const x=S.items[l],y=P.items[l];
+    if(!y||x.n<2||y.n<2)return;
+    const d=Math.round((x.ok/x.n-y.ok/y.n)*100);
+    if(Math.abs(d)>=30) out.push(`${l}: 前期から ${sgn(d)}ポイント（${pct(y.ok/y.n)}→${pct(x.ok/x.n)}）`);});
+  if(S.topWho&&S.topWhoN>=2) out.push(`${C().title}でよく出る相手: ${S.topWho}（${S.topWhoN}件 / 全${S.ang}件）`);
+  return out;
+}
+function reviewHints(S){
+  const out=[];
+  Object.keys(S.items).forEach(l=>{const x=S.items[l];
+    if(x.n>=4&&x.ok===x.n&&!x.auto) out.push(`✅ ${l}: ずっと100% → 習慣になったので外す候補`);
+    else if(x.n>=4&&x.ok===0) out.push(`🔧 ${l}: ずっと0% → やり方を見直す候補`);
+    if(x.no>=Math.ceil(S.days/2)) out.push(`❓ ${l}: 未記入 ${x.no}/${S.days}日 → 本当に必要か確認`);});
+  if(dItems().length>9) out.push(`📋 日次チェックが ${dItems().length} 項目あります（目安 7〜9）`);
+  return out;
+}
+function numRows(S,P){
+  const mk=(l,k,f,dir,unit)=>({l,c:S[k],p:P?P[k]:null,f,dir,unit});
+  const rows=[
+    mk('起床 平均','wake',hm,0,'分'),
+    mk('起床のブレ（標準偏差）','wakeSd',v=>v==null?'—':v+'分',-1,'分'),
+    mk(`起床 目標±${C().rt.tol}分以内`,'wakeOk',v=>v==null?'—':v+'日',1,'日'),
+    mk('睡眠 平均','sleep',dm,1,'分'),
+    mk('PN 回数','pn',v=>v==null?'—':v+'回',0,'回'),
+    mk('朝ルーティン 平均所要','rt',dm,-1,'分'),
+    mk('YouTube 寄り道の割合','detour',v=>v==null?'—':v+'%',-1,'pt'),
+    mk('日次チェック 達成率','rate',v=>v==null?'—':v+'%',1,'pt'),
+    mk('Brave 平均','brave',dm,-1,'分'),
+    mk(C().title+' 件数','ang',v=>v==null?'—':v+'件',0,'件'),
+    mk('EN 拾ったフレーズ','ph',v=>v==null?'—':v+'件',1,'件')];
+  Object.keys(S.items).forEach(l=>{const x=S.items[l],y=P&&P.items[l];
+    rows.push({l:'　'+l,c:x.n?Math.round(x.ok/x.n*100):null,
+      p:y&&y.n?Math.round(y.ok/y.n*100):null,f:v=>v==null?'—':v+'%',dir:1,unit:'pt'});});
+  return rows;
+}
+function diffTxt(r){
+  if(r.c==null||r.p==null) return {t:'',c:''};
+  const d=r.c-r.p; if(!d) return {t:'±0',c:''};
+  return {t:sgn(d)+r.unit,c:r.dir?(d*r.dir>0?'good':'bad'):''};
+}
+let rp='lastw',rpKs=[],rpS=null,rpP=null;
+function rpKeys(){
+  if(rp==='range'){
+    let a=$('rpFrom').value,b=$('rpTo').value;
+    if(!a||!b) return periodKeys('d7');
+    if(a>b){const x=a;a=b;b=x;}
+    return keysBetween(a,b);
+  }
+  return periodKeys(rp);
+}
+const rpA=()=>rpKs[0],rpB=()=>rpKs[rpKs.length-1];
+function drawReport(){
+  ['lastw','d7','range'].forEach(p=>{const b=$('rp_'+p);if(b)b.className='small seg'+(rp===p?' on':'');});
+  $('rpRangeBox').style.display=rp==='range'?'':'none';
+  rpKs=rpKeys();
+  const a=rpA(),b=rpB(),n=rpKs.length;
+  rpS=repStats(rpKs);rpP=repStats(keysBetween(shiftKey(a,-n),shiftKey(a,-1)));
+  $('rpRange').textContent=`${a}〜${b}（${n}日）`;
+  const rec=repRec(a,b,false);
+
+  const box=$('rpPrev');box.innerHTML='';
+  const pv=prevRep(a);
+  if(pv){
+    const el=document.createElement('div');el.className='exp mt';
+    el.innerHTML=`<div class="mini">前回の実験（${esc(pv.from.slice(5))}〜${esc(pv.to.slice(5))}）</div><div style="margin:4px 0 8px">🧪 ${esc(pv.exp)}</div>`;
+    const cs=document.createElement('div');cs.className='chips';
+    Object.keys(MARK).forEach(k=>{
+      const c=document.createElement('button');c.className='chip'+(pv.mark===k?' on':'');
+      c.textContent=MARK[k];
+      c.addEventListener('click',()=>{pv.mark=pv.mark===k?'':k;touch(pv);save();drawReport();});
+      cs.appendChild(c);
+    });
+    el.appendChild(cs);
+    const inp=document.createElement('input');inp.className='mt';inp.style.marginBottom='0';
+    inp.placeholder='どうだったか（ひとこと・任意）';inp.value=pv.result||'';
+    inp.addEventListener('change',()=>{pv.result=inp.value.trim();touch(pv);save();});
+    el.appendChild(inp);box.appendChild(el);
+  }
+
+  let h=`<div class="rpr hd"><span></span><span class="v">今期</span><span class="p">前期</span><span class="d">差</span></div>`;
+  numRows(rpS,rpP).forEach(r=>{const d=diffTxt(r);
+    h+=`<div class="rpr"><span>${esc(r.l)}</span><span class="v">${esc(r.f(r.c))}</span><span class="p">${esc(r.f(r.p))}</span><span class="d ${d.c}">${esc(d.t)}</span></div>`;});
+  $('rpNums').innerHTML=h;
+
+  const ins=insights(rpS,rpP),hints=reviewHints(rpS);
+  let ih=ins.length?ins.map(t=>`<div class="ins">💡 ${esc(t)}</div>`).join('')
+    :'<div class="sub">まだ比べられるだけの記録がありません（比べる両側に2日以上必要）</div>';
+  if(hints.length) ih+='<div class="rgh">チェック項目の見直し</div>'+hints.map(t=>`<div class="ins">${esc(t)}</div>`).join('');
+  $('rpIns').innerHTML=ih;
+
+  $('rpExp').value=rec?rec.exp||'':'';
+  $('rpMemo').value=rec?rec.memo||'':'';
+  $('rpMemoAt').textContent=rec&&rec.memoAt?`保存済み ${fmt(rec.memoAt)}`:'';
+
+  const rh=$('rpHist');
+  if(rh){
+    rh.innerHTML='';
+    const past=repAll().filter(x=>x.exp||x.memo||x.mark||x.result)
+      .sort((x,y)=>y.to.localeCompare(x.to)).slice(0,20);
+    if(!past.length) rh.innerHTML='<div class="sub">まだ保存されたレポートはありません</div>';
+    past.forEach(x=>{
+      const row=document.createElement('div');row.className='hist';
+      const mk=x.mark?`［${MARK[x.mark]}］`:'';
+      row.innerHTML=`<span><span class="mini">${esc(x.from.slice(5))}〜${esc(x.to.slice(5))}</span> ${x.exp?'🧪 '+esc(x.exp):'（実験なし）'} <span class="mini">${esc(mk)}</span>${x.memo?' 📝':''}</span><span>${x.synced?'':'<span class="dot"></span>'}</span>`;
+      row.addEventListener('click',()=>{
+        repSave('exp',$('rpExp').value.trim());
+        $('rpFrom').value=x.from;$('rpTo').value=x.to;
+        rp='range';drawReport();
+      });
+      rh.appendChild(row);
+    });
+  }
+}
+function repSave(field,val){
+  const cur=repRec(rpA(),rpB(),false);
+  if((cur?cur[field]||'':'')===val) return false;
+  if(!cur&&!val) return false;
+  const r=repRec(rpA(),rpB(),true);
+  r[field]=val; if(field==='memo') r.memoAt=val?now():null;
+  touch(r);save();return true;
+}
+function repMd(){
+  const a=rpA(),b=rpB(),n=rpKs.length,pv=prevRep(a),rec=repRec(a,b,false);
+  const L=['以下は私のライフログの集計です。これをもとに振り返りレポートを書いてください。',
+    '条件: 日本語で／数字（事実）と解釈を分ける／うまくいったこと2つと崩れたパターン2つ／前回の実験の評価／チェック項目で外す・見直すべきものがあれば指摘／来週の実験を1つだけ提案（小さく・具体的・測れる形）／800字程度。','',
+    `## 期間 ${a}〜${b}（${n}日。前期は ${shiftKey(a,-n)}〜${shiftKey(a,-1)}）`];
+  if(pv) L.push('','## 前回の実験',`- ${pv.exp} → ${MARK[pv.mark]||'未評価'}${pv.result?' ／ '+pv.result:''}`);
+  L.push('','## 数字（今期 / 前期 / 差）');
+  numRows(rpS,rpP).forEach(r=>L.push(`- ${r.l.trim()}: ${r.f(r.c)} / ${r.f(r.p)} ${diffTxt(r).t}`));
+  const ins=insights(rpS,rpP),hints=reviewHints(rpS);
+  if(ins.length){L.push('','## アプリが出した気づき');ins.forEach(t=>L.push('- '+t));}
+  if(hints.length){L.push('','## チェック項目の見直し候補');hints.forEach(t=>L.push('- '+t));}
+  if(rec&&rec.exp) L.push('','## 自分で決めた次の実験','- '+rec.exp);
+  L.push('',mdWeek(rpKs,db.settings.expAng!==false,'レポート期間のログ'));
+  return L.join('\n');
+}
+function openReport(){
+  const T=dayKeyOf(new Date());
+  rp='lastw';
+  $('rpFrom').value=db.settings.expFrom||shiftKey(T,-6);
+  $('rpTo').value=db.settings.expTo||T;
+  $('rpMsg').textContent='';$('rpOut').style.display='none';
+  drawReport();$('rpdlg').showModal();
+}
+on('btnRep','click',openReport);
+['lastw','d7','range'].forEach(p=>on('rp_'+p,'click',()=>{
+  repSave('exp',$('rpExp').value.trim());rp=p;drawReport();}));
+['rpFrom','rpTo'].forEach(id=>on(id,'change',()=>{
+  db.settings.expFrom=$('rpFrom').value;db.settings.expTo=$('rpTo').value;save();
+  if(rp==='range') drawReport();}));
+on('rpExp','change',()=>{if(repSave('exp',$('rpExp').value.trim()))$('rpMsg').textContent='実験を保存しました';});
+on('rpMemoSave','click',()=>{
+  repSave('memo',$('rpMemo').value.trim());
+  const r=repRec(rpA(),rpB(),false);
+  $('rpMemoAt').textContent=r&&r.memoAt?`保存済み ${fmt(r.memoAt)}`:'';
+  $('rpMsg').textContent='振り返りメモを保存しました';
+  drawReport();sync(true);
+});
+on('rpCopy','click',async()=>{
+  repSave('exp',$('rpExp').value.trim());
+  const t=repMd();
+  try{await navigator.clipboard.writeText(t);
+    $('rpMsg').textContent='コピーしました。Claude に貼り付けて、返事を下の欄に貼ってください';}
+  catch(e){const o=$('rpOut');o.value=t;o.style.display='';o.select();
+    $('rpMsg').textContent='下の欄を長押ししてコピーしてください';}
+});
+on('rpClose','click',()=>$('rpdlg').close());
+on('rpdlg','close',()=>{
+  if(rpKs.length){repSave('exp',$('rpExp').value.trim());repSave('memo',$('rpMemo').value.trim());}
+  render();sync(true);
+});
+
 /* ---------- カスタマイズ ---------- */
 const toLines=(arr,key)=>arr.map(x=>{
-  if(typeof x==='string') return x;
+  if(typeof x==='string') return x.replace(/^#+/,'#');
   const s=[x.icon||'',x.label||''].concat(key&&x[key]?[x[key]]:[]).join(',');
   return (x.off?'#':'')+s;
 }).join('\n');
-const parsePlain=s=>s.split('\n').map(x=>x.trim()).filter(Boolean);
+const parsePlain=s=>s.split('\n').map(x=>x.trim().replace(/^#+/,'#')).filter(x=>x&&x!=='#');
 function parseIcon(s,key){
   return s.split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{
     let off=false;
-    if(line.startsWith('#')){off=true;line=line.slice(1).trim();}
+    if(line.startsWith('#')){off=true;line=line.replace(/^#+/,'').trim();}
     const p=line.split(',').map(y=>y.trim());
     const o=p.length>1?{icon:p[0],label:p[1]}:{icon:'',label:p[0]};
     if(key&&p[2]) o[key]=p[2];
@@ -2085,16 +2393,31 @@ function forPush(i){
     o.evalText=i.eval?((evDef(i.eval).icon||'')+' '+i.eval).trim():'';
   }else if(i.kind==='phrase'){
     o.stageText=ST[stageOf(i)];
+  }else if(i.kind==='report'&&i.from&&i.to){
+    try{
+      const ks=keysBetween(i.from,i.to),n=ks.length;
+      const S=repStats(ks),P=repStats(keysBetween(shiftKey(i.from,-n),shiftKey(i.from,-1)));
+      o.sumText=`起床${hm(S.wake)}(ブレ${S.wakeSd??'—'}分) 睡眠${dm(S.sleep)} PN${S.pn} 朝RT${dm(S.rt)} 達成率${S.rate??'—'}% Brave${dm(S.brave)} 場面${S.ang} EN${S.ph}`;
+      o.insText=insights(S,P).concat(reviewHints(S)).join(' / ');
+    }catch(e){}
+    o.markText=MARK[i.mark]||'';
   }
   return o;
 }
 function merge(remote){
   const map={}; db.items.forEach(i=>map[i.id]=i);
+  let pieceChanged=false;
   (remote||[]).forEach(r=>{
     const l=map[r.id];
-    if(!l){db.items.push(Object.assign(r,{synced:true,everSynced:true}));map[r.id]=r;}
-    else if((r.updatedAt||'')>(l.updatedAt||'')) Object.assign(l,r,{synced:true,everSynced:true});
+    if(!l){
+      db.items.push(Object.assign(r,{synced:true,everSynced:true}));map[r.id]=r;
+      if(r.kind==='piece') pieceChanged=true;
+    }else if((r.updatedAt||'')>(l.updatedAt||'')){
+      Object.assign(l,r,{synced:true,everSynced:true});
+      if(r.kind==='piece') pieceChanged=true;
+    }
   });
+  if(pieceChanged) relink(phAll().map(p=>p.id));
 }
 /* 同期中に呼ばれたら、終わったあとにもう一度回す（変更を取りこぼさない）。
    「同期済み」にするのは、送った時点と updatedAt が同じ記録だけ。 */
@@ -2131,6 +2454,7 @@ async function runSync(silent){
     render();
     if($('idlg').open) drawInbox();
     if($('ndlg').open&&!$('phdlg').open&&!$('pcdlg').open) drawEn();
+    if($('rpdlg').open) drawReport();
     msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
   }catch(e){msg('同期失敗：'+e.message+'（記録は端末に保持）');}
   finally{busy=false;}
@@ -2220,12 +2544,17 @@ if(q==='sleep'||q==='pn'){
 if(q==='anger') openAnger(null);
 if(q==='daily') openDaily(0);
 if(q==='en') openEn();
+if(q==='report') openReport();
 if(setupNote) msg(setupNote);
 if(shareNote) toast(shareNote+'　— 今は見ずに閉じて大丈夫です');
 else if(migNote) toast(migNote);
 if(!cmdRan) sync(true);
 if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+    reg.update().catch(()=>{});
+  }).catch(()=>{});
+}
 window.addEventListener('online',()=>sync(true));
 </script>
 </body>
