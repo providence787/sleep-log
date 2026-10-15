@@ -1,4 +1,4 @@
-const V='sleeplog-2026-10-15b';
+const V='sleeplog-2026-10-15c';
 const CORE=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 
 self.addEventListener('install',e=>{
