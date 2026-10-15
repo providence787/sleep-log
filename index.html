@@ -94,6 +94,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 .rgh{font-size:12px;color:#aebcff;margin:14px 0 2px}
 .ins{padding:8px 2px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.5}
 .exp{background:#1d2a22;border-radius:12px;padding:12px;font-size:14px;line-height:1.5}
+.lvbtn.step b{color:#ffcf8a;font-weight:700}
 </style>
 </head>
 <body>
@@ -103,6 +104,15 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 <div class="toast" id="toast" style="display:none"></div>
 
 <div class="card" id="main"></div>
+
+<div class="card" id="actCard" style="display:none">
+  <div class="sub" style="margin-bottom:8px">💪 鍛錬（1タップ＝1回。目標に届くと日次チェックが自動で✓）</div>
+  <div id="actBox"></div>
+  <div class="row">
+    <button class="small" id="actUndo">↩ 取り消し</button>
+    <button class="small" id="actOpen">記録を見る・直す</button>
+  </div>
+</div>
 
 <div class="card">
   <div class="row" style="align-items:center">
@@ -243,6 +253,18 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <button class="small" id="rReopen">再開</button>
     <button class="small" id="rClose" style="flex:2">閉じる</button>
   </div>
+</div></dialog>
+
+<!-- 鍛錬の記録（タップで即時反映） -->
+<dialog id="acdlg"><div class="pad">
+  <div style="font-weight:700">💪 鍛錬の記録 <span class="mini" id="acDate"></span></div>
+  <div class="row mt">
+    <button class="small seg" id="acToday">今日</button>
+    <button class="small seg" id="acYest">昨日</button>
+  </div>
+  <div class="mini mt" style="line-height:1.5">記録（時刻）をタップすると取り消せます。やったのに押し忘れた分は、時刻（と回数）を入れて「＋追加」。</div>
+  <div id="acList"></div>
+  <button class="small mt" id="acClose" style="width:100%">閉じる</button>
 </div></dialog>
 
 <!-- 日次チェック（タップで即時反映） -->
@@ -475,8 +497,11 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <label>睡眠メモのタグ（3つめに wake と書いた行は排他選択）</label>
   <textarea id="cTags"></textarea>
 
-  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定）。目安は7〜9項目、新しい項目は2週間のお試しにしてレポートで残すか決める</label>
+  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定 / auto:act:メニュー名＝鍛錬の目標達成で自動判定）。目安は7〜9項目、新しい項目は2週間のお試しにしてレポートで残すか決める</label>
   <textarea id="cDaily"></textarea>
+
+  <label>鍛錬メニュー（3つめ: tap5＝1タップ1回で1日5回 / rep20＝回数を入れて1日合計20回）。名前を変えると過去の記録とは別のメニューになります</label>
+  <textarea id="cAct" style="min-height:70px"></textarea>
 
   <label>朝ルーティンのステップ（3つめ: wake＝起床 / toilet＝トイレ入室 / padlet＝Padlet / end＝退出・終了）</label>
   <textarea id="cSteps"></textarea>
@@ -547,7 +572,13 @@ const DEFAULTS={
     {icon:'🃏',label:'Anki 金フレ 10枚',opt:'x3'},
     {icon:'🃏',label:'Anki Distinction 10枚',opt:'x3'},
     {icon:'✍️',label:'聖書模写・黙想 A5 1枚'},
-    {icon:'🙏',label:'Obsidian 朝の祈り（音声入力）'}
+    {icon:'🙏',label:'Obsidian 朝の祈り（音声入力）'},
+    {icon:'🪢',label:'ぶら下がり10秒 ×5',opt:'auto:act:ぶら下がり10秒'},
+    {icon:'💪',label:'懸垂 1日20回',opt:'auto:act:懸垂'}
+  ],
+  act:[
+    {icon:'🪢',label:'ぶら下がり10秒',opt:'tap5'},
+    {icon:'💪',label:'懸垂',opt:'rep20'}
   ],
   ievals:[
     {icon:'✍️',label:'書いた'},
@@ -588,7 +619,7 @@ const DEFAULTS={
   }
 };
 const PN_LIMIT=3;
-const DAY_CUT=3;                 // 日次・ルーティンの日付は 3:00 で切り替え
+const DAY_CUT=3;                 // 日次・ルーティン・鍛錬の日付は 3:00 で切り替え
 const RT_WIN=[2,7];              // この時間帯に睡眠を終えたら朝ルーティンを自動開始
 const SLEEP_EVE=18;              // 計測中の睡眠: この時刻以降に寝始めたら翌日扱い
 const EXP_MAX=92;                // エクスポート・レポートの期間指定の上限（日）
@@ -598,6 +629,7 @@ const CMD_GAP=3;                 // 同じショートカットをこの分数�
 const STOP_WAIT=6000;            // 開始・終了の前に他端末の記録を確認する最大待ち時間（ms）
 const SHORT_SLEEP=360;           // レポートの気づき: この分数未満を「短い睡眠」とする
 const EXP_SHOW=14;               // メイン画面に実験を表示する日数（レポート期間の終わりから）
+const ACT_GAP=1500;              // 鍛錬: 同じボタンをこのミリ秒以内に続けて押したら二度押しとして無視
 const DEFAULT_URL='...';         // 実値は入れない（各端末の設定に保存）
 const DEFAULT_TOKEN='...';
 /* ============================================================ */
@@ -649,7 +681,7 @@ const atTime=(base,v,afterBase)=>{const [H,M]=v.split(':').map(Number);
 const canSync=()=>!!(db.settings.url&&db.settings.token);
 
 /* ---------- 設定（項目定義）: 1レコードとして同期 ---------- */
-const CFG_KEYS=['title','levels','who','trig','tags','daily','ievals','rt','en'];
+const CFG_KEYS=['title','levels','who','trig','tags','daily','act','ievals','rt','en'];
 function migrateCfg(c){               // 「排便完了」廃止 → トイレ入室→退出 に統合（1回だけ）
   const rt=c.data.rt; if(rt.mig3) return;
   let ch=false;
@@ -663,6 +695,24 @@ function migrateCfg(c){               // 「排便完了」廃止 → トイレ�
   rt.mig3=true;
   if(ch) touch(c);
 }
+/* 鍛錬メニューを日次チェックに1回だけ追加する。
+   初期値のままの設定（まだ同期していない新しい端末）では送らない（本物の設定を上書きしないため） */
+function migrateAct(c){
+  if(c.data.actMig) return;
+  const fresh=c.updatedAt===new Date(0).toISOString();
+  const d=c.data.daily=c.data.daily||[];
+  let ch=false;
+  (c.data.act||[]).forEach(m=>{
+    if(m.off||!m.label) return;
+    const o='auto:act:'+m.label;
+    if(d.some(x=>x.opt===o)) return;
+    const ty=aType(m);
+    d.push({icon:m.icon||'',label:ty.t==='rep'?`${m.label} 1日${ty.goal}回`:`${m.label} ×${ty.goal}`,opt:o});
+    ch=true;
+  });
+  c.data.actMig=true;
+  if(ch&&!fresh) touch(c);
+}
 function cfgRec(){
   let c=db.items.find(i=>i.kind==='config');
   if(!c){c={id:'CONFIG',kind:'config',data:clone(DEFAULTS),
@@ -675,7 +725,9 @@ function cfgRec(){
   if(!c.data.en||typeof c.data.en!=='object') c.data.en=clone(DEFAULTS.en);
   if(!Array.isArray(c.data.en.islands)) c.data.en.islands=clone(DEFAULTS.en.islands);
   if(!c.data.en.goal) c.data.en.goal=DEFAULTS.en.goal;
+  if(!Array.isArray(c.data.act)) c.data.act=clone(DEFAULTS.act);
   migrateCfg(c);
+  migrateAct(c);
   return c;
 }
 const C=()=>cfgRec().data;
@@ -738,6 +790,85 @@ function lvDef(r){
   let d=L.find(x=>x.label===r.levelKey);
   if(!d&&typeof r.level==='number') d=L[r.level];
   return d||{icon:'·',label:r.levelKey||'(未設定)'};
+}
+
+/* ---------- 鍛錬メニュー: データ（kind='act'・1メニュー×1日＝1記録、中にタップを並べる） ---------- */
+function aType(m){
+  const o=String((m&&m.opt)||'').trim().toLowerCase();
+  let x=o.match(/^rep(\d+)$/); if(x) return {t:'rep',goal:Math.max(1,+x[1])};
+  x=o.match(/^tap(\d+)$/); if(x) return {t:'tap',goal:Math.max(1,+x[1])};
+  return {t:'tap',goal:1};
+}
+const actDefs=()=>(C().act||[]).filter(x=>!x.off&&x.label);
+const actDef=lb=>(C().act||[]).find(x=>x.label===lb)||null;
+const hid=s=>{let h=0;for(const ch of String(s))h=(h*31+ch.codePointAt(0))|0;return (h>>>0).toString(36);};
+const actId=(k,lb)=>'AC-'+k.replace(/-/g,'')+'-'+hid(lb);
+function actRec(k,lb,create){
+  let r=db.items.find(i=>i.kind==='act'&&i.id===actId(k,lb));
+  if(!r&&create){
+    r={id:actId(k,lb),kind:'act',dateKey:k,label:lb,
+       start:new Date(k+'T12:00:00').toISOString(),end:null,taps:[],updatedAt:now(),synced:false};
+    db.items.push(r);
+  }
+  if(r&&r.deleted){if(create)r.deleted=false;else return null;}
+  return r||null;
+}
+const liveTaps=r=>((r&&r.taps)||[]).filter(t=>t&&!t.del)
+  .sort((a,b)=>new Date(a.t)-new Date(b.t));
+function actProg(lb,k){
+  const m=actDef(lb),r=actRec(k,lb,false);
+  const ty=m?aType(m):{t:(r&&r.typ)||'tap',goal:(r&&r.goal)||1};
+  const ts=liveTaps(r),total=ts.reduce((a,t)=>a+(+t.n||0),0);
+  const val=ty.t==='rep'?total:ts.length;
+  return {m:m||{icon:'',label:lb},ty,r,ts,sets:ts.length,total,val,done:val>=ty.goal};
+}
+const progText=p=>p.ty.t==='rep'
+  ?`${p.val}/${p.ty.goal}回${p.sets?'（'+p.sets+'セット）':''}`
+  :`${p.val}/${p.ty.goal}回`;
+function addTap(lb,n,iso,k){
+  k=k||dayKeyOf(new Date());
+  const m=actDef(lb),r=actRec(k,lb,true);
+  if(m){const ty=aType(m);r.typ=ty.t;r.goal=ty.goal;}
+  r.taps=r.taps||[];
+  r.taps.push({id:uid(),t:iso||now(),n:Math.max(1,+n||1)});
+  touch(r);save();
+  return r;
+}
+function delTap(r,id){
+  if(!r)return;
+  const t=(r.taps||[]).find(x=>x.id===id); if(!t||t.del)return;
+  t.del=true;touch(r);save();               // 消した印を残す（他の端末の記録と足し合わせても復活しない）
+}
+function lastTapToday(){
+  const k=dayKeyOf(new Date());let best=null;
+  live().filter(i=>i.kind==='act'&&i.dateKey===k).forEach(r=>liveTaps(r).forEach(t=>{
+    if(!best||new Date(t.t)>new Date(best.t.t)) best={r,t};}));
+  return best;
+}
+/* 2つの端末のタップを足し合わせる（同じ ID は1つ、どちらかで取り消されていれば取り消し） */
+function unionTaps(a,b){
+  const m={},order=[];
+  (a||[]).concat(b||[]).forEach(t=>{
+    if(!t||!t.id)return;
+    if(!m[t.id]){m[t.id]=Object.assign({},t);order.push(t.id);}
+    else if(t.del) m[t.id].del=true;
+  });
+  return order.map(id=>m[id]).sort((x,y)=>new Date(x.t)-new Date(y.t));
+}
+const tapSig=a=>(a||[]).map(t=>t.id+':'+(t.n||1)+':'+(t.del?1:0)).sort().join(',');
+const repN=lb=>{const v=(db.settings.actLast||{})[lb];return v>0?v:5;};
+function setRepN(lb,v){
+  db.settings.actLast=db.settings.actLast||{};
+  db.settings.actLast[lb]=Math.max(1,Math.min(999,Math.round(v)||1));save();
+}
+const lastTapAt={};
+function tapMenu(lb,n){
+  const t=Date.now();
+  if(lastTapAt[lb]&&t-lastTapAt[lb]<ACT_GAP) return;     // 二度押し防止
+  lastTapAt[lb]=t;
+  addTap(lb,n);
+  try{if(navigator.vibrate)navigator.vibrate(25);}catch(e){}
+  render();sync(true);
 }
 
 /* ---------- 朝ルーティン: データ ---------- */
@@ -931,7 +1062,7 @@ function render(){
   }
   tick();
   $('btnAng').textContent=C().title+'を記録';
-  renderDaySum();renderEnSum();renderAng();renderHist();renderTrash();
+  renderAct();renderDaySum();renderEnSum();renderAng();renderHist();renderTrash();
   const p=db.items.filter(i=>!i.synced).length;
   $('syncmsg').textContent=p?`未同期 ${p} 件`:'すべて同期済み';
 }
@@ -990,6 +1121,36 @@ function drawYt(box,r,after){
     b.addEventListener('click',()=>{r.yt=(r.yt===y.label?'':y.label);touch(r);save();after();});
     box.appendChild(b);
   });
+}
+/* 鍛錬カード: 1タップ＝1回（rep 型は「＋n回」。−／＋で n を変える） */
+function renderAct(){
+  const card=$('actCard'),box=$('actBox'); if(!card||!box)return;
+  const ms=actDefs(),T=dayKeyOf(new Date());
+  card.style.display=ms.length?'':'none';
+  box.innerHTML='';
+  ms.forEach(m=>{
+    const p=actProg(m.label,T),rep=p.ty.t==='rep',n=rep?repN(m.label):1;
+    const row=document.createElement('div');row.className='row';
+    row.style.cssText='align-items:stretch;margin-bottom:8px';
+    const b=document.createElement('button');
+    b.className='lvbtn step'+(p.done?' done':'');
+    b.style.cssText='margin:0;flex:4;min-height:58px';
+    b.innerHTML=`<span class="lvic">${esc(m.icon||'')}</span><span>${esc(m.label)}${rep?` <b>＋${n}</b>`:''}</span>`+
+      `<span class="tm">${p.val}/${p.ty.goal}${p.done?' ✓':''}</span>`;
+    b.addEventListener('click',()=>tapMenu(m.label,n));
+    if(rep){
+      const mk=(t,d)=>{const x=document.createElement('button');x.className='small';
+        x.style.cssText='flex:0 0 50px;font-size:20px;padding:0';x.textContent=t;
+        x.addEventListener('click',()=>{setRepN(m.label,repN(m.label)+d);renderAct();});return x;};
+      row.appendChild(mk('−',-1));row.appendChild(b);row.appendChild(mk('＋',1));
+    }else row.appendChild(b);
+    box.appendChild(row);
+  });
+  const u=$('actUndo'),lt=lastTapToday();
+  if(u){
+    u.disabled=!lt;
+    u.textContent=lt?`↩ 取り消し（${lt.r.label}${lt.r.typ==='rep'?' '+lt.t.n+'回':''} ${hhmm(new Date(lt.t.t))}）`:'↩ 取り消し';
+  }
 }
 function renderDaySum(){
   const T=dayKeyOf(new Date()),e=dailyEval(T),y=dailyEval(shiftKey(T,-1));
@@ -1060,6 +1221,7 @@ function kindName(r){
   if(r.kind==='phrase') return '🗣 '+String(r.en||r.raw||'').slice(0,40);
   if(r.kind==='piece') return '🗣 '+(r.type==='speak'?'話した ':'書いた ')+(r.dateKey||'');
   if(r.kind==='report') return '📊 レポート '+(r.from||'')+'〜'+(r.to||'');
+  if(r.kind==='act') return '💪 '+(r.label||'')+' '+(r.dateKey||'');
   return r.kind||'?';
 }
 function renderTrash(){
@@ -1247,6 +1409,68 @@ on('rdlg','close',()=>{
     if(v!==(rcur.note||'')){rcur.note=v;touch(rcur);save();}}
   rcur=null;render();sync(true);});
 
+/* ---------- 鍛錬の記録画面（タップで即時反映） ---------- */
+let ak=null;
+function openAct(){ak=dayKeyOf(new Date());drawActDlg();if(!$('acdlg').open)$('acdlg').showModal();}
+function drawActDlg(){
+  if(!ak)return;
+  const T=dayKeyOf(new Date());
+  $('acDate').textContent=ak;
+  $('acToday').className='small seg'+(ak===T?' on':'');
+  $('acYest').className='small seg'+(ak===shiftKey(T,-1)?' on':'');
+  const L=$('acList');L.innerHTML='';
+  const labels=actDefs().map(m=>m.label);
+  live().filter(i=>i.kind==='act'&&i.dateKey===ak&&liveTaps(i).length&&!labels.includes(i.label))
+    .forEach(i=>labels.push(i.label));                // 非表示にしたメニューの記録も出す
+  if(!labels.length){L.innerHTML='<div class="sub mt">メニューがありません（「項目をカスタマイズ」で追加）</div>';return;}
+  labels.forEach(lb=>{
+    const p=actProg(lb,ak),rep=p.ty.t==='rep';
+    const el=document.createElement('div');el.className='drow';
+    el.innerHTML=`<div class="dlab">${esc(p.m.icon||'')} ${esc(lb)} <span class="mini">${esc(progText(p))}${p.done?' ✓ 達成':''}</span></div>`;
+    const cs=document.createElement('div');cs.className='chips';
+    if(!p.ts.length) cs.innerHTML='<span class="mini">まだ記録がありません</span>';
+    p.ts.forEach(t=>{
+      const b=document.createElement('button');b.className='chip';
+      b.textContent=`${hhmm(new Date(t.t))}${rep?' '+t.n+'回':''} ×`;
+      b.addEventListener('click',()=>{
+        if(!confirm('この記録を取り消しますか？'))return;
+        delTap(p.r,t.id);drawActDlg();});
+      cs.appendChild(b);
+    });
+    el.appendChild(cs);
+    const add=document.createElement('div');add.className='row mt';add.style.alignItems='center';
+    const ti=document.createElement('input');ti.type='time';
+    ti.value=ak===T?hhmm(new Date()):'12:00';ti.style.flex='0 0 auto';
+    add.appendChild(ti);
+    let ni=null;
+    if(rep){
+      ni=document.createElement('input');ni.type='number';ni.className='num';
+      ni.inputMode='numeric';ni.value=repN(lb);ni.style.cssText='flex:0 0 72px';
+      add.appendChild(ni);
+      const u=document.createElement('span');u.className='mini';u.style.flex='0 0 auto';u.textContent='回';
+      add.appendChild(u);
+    }
+    const ab=document.createElement('button');ab.className='small okb';ab.textContent='＋追加';
+    ab.addEventListener('click',()=>{
+      const v=ti.value||'12:00',[H,M]=v.split(':').map(Number);
+      const d=new Date(ak+'T00:00:00');d.setHours(H,M,0,0);
+      if(H<DAY_CUT) d.setDate(d.getDate()+1);           // 0〜3時はその日の夜中の扱い
+      const n=ni?Math.round(+ni.value||0):1; if(n<1)return;
+      addTap(lb,n,d.toISOString(),ak);drawActDlg();
+    });
+    add.appendChild(ab);el.appendChild(add);L.appendChild(el);
+  });
+}
+on('actOpen','click',openAct);
+on('actUndo','click',()=>{
+  const lt=lastTapToday(); if(!lt)return;
+  delTap(lt.r,lt.t.id);render();sync(true);
+});
+on('acToday','click',()=>{ak=dayKeyOf(new Date());drawActDlg();});
+on('acYest','click',()=>{ak=shiftKey(dayKeyOf(new Date()),-1);drawActDlg();});
+on('acClose','click',()=>$('acdlg').close());
+on('acdlg','close',()=>{if($('ddlg').open)drawDaily();render();sync(true);});
+
 /* ---------- 場面ログ（保存を押すまで確定しない） ---------- */
 let acur=null,aNew=false;
 function openAnger(id){
@@ -1364,6 +1588,13 @@ function dType(it){
 }
 function autoVal(key,k){
   const rt=C().rt;
+  if(key.startsWith('act:')){                     // 鍛錬: 目標に届けば ✓。今日の途中は判定しない
+    const lb=key.slice(4),p=actProg(lb,k),text=progText(p);
+    if(p.done) return {v:'ok',text};
+    if(!p.sets) return null;                       // 記録が0件の日は「データなし」
+    if(k<dayKeyOf(new Date())) return {v:'ng',text};
+    return {v:null,text:text+' 途中'};
+  }
   if(key==='wake'){
     const lo=new Date(k+'T02:00:00'),hi=new Date(k+'T07:00:00');
     const s=live().filter(i=>i.kind==='sleep'&&i.type==='sleep'&&i.end
@@ -1398,7 +1629,7 @@ function dailyEval(k,rec){
     if(ty.t==='auto'){
       auto=autoVal(ty.key,k);
       if(ov[it.label]!==undefined){v=ov[it.label];manual=true;}
-      else v=auto?auto.v:undefined;
+      else v=(auto&&auto.v)?auto.v:undefined;
     }else v=ch[it.label];
     const ok=ty.t==='count'?v===ty.n:v==='ok';
     if(v!=='na'){total++;if(ok)done++;}
@@ -1875,8 +2106,9 @@ function dayData(k){
   const inD=inboxAll().filter(i=>i.eval&&i.doneAt&&dayKeyOf(new Date(i.doneAt))===k);
   const ph=phAll().filter(p=>p.dateKey===k).sort((a,b)=>new Date(a.start)-new Date(b.start));
   const pc=pcAll().filter(x=>x.dateKey===k);
+  const ac=actDefs().map(m=>actProg(m.label,k)).filter(p=>p.sets>0);
   const wakeDiff=s?Math.round((new Date(s.end)-rtTarget(k))/60000):null;
-  return {k,s,pn,r,mt,e,br,ang,inA,inD,ph,pc,wakeDiff};
+  return {k,s,pn,r,mt,e,br,ang,inA,inD,ph,pc,ac,wakeDiff};
 }
 function mdDay(d,inc,h,withInbox){
   const L=[`${h} ライフログ ${d.k}（${wdOf(d.k)}）`];
@@ -1903,6 +2135,9 @@ function mdDay(d,inc,h,withInbox){
     const sum=d.pn.reduce((a,p)=>a+mins(p),0);
     L.push(`- PN: ${d.pn.length}回 計${durText(sum)}（${d.pn.map(p=>hhmm(new Date(p.start))+' '+mins(p)+'分').join(', ')}）`);
   }
+  if(d.ac&&d.ac.length){
+    L.push(`- 鍛錬: `+d.ac.map(p=>`${p.m.icon||''}${p.m.label} ${progText(p)}${p.done?'✓':''}`).join(' ／ '));
+  }
   L.push(`- 日次 ${d.e.done}/${d.e.total}: `+d.e.rows.map(x=>markSym(x)+' '+x.it.label).join(' ／ '));
   if(d.br) L.push(`- Brave: ${d.br.n??'-'}回 ・ ${d.br.min==null?'-':durText(d.br.min)}`);
   if(d.ph.length||d.pc.length){
@@ -1924,7 +2159,7 @@ function mdDay(d,inc,h,withInbox){
 function mdWeek(ks,inc,title){
   const D=ks.map(dayData),rt=C().rt;
   const L=[`## ${title} ${ks[0]}〜${ks[ks.length-1]}（${ks.length}日）`,'',
-    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティン・ENの1日の区切りは 3:00。'+
+    '> ライフログアプリの自動出力。睡眠・PNは「起きた日」に計上（前夜に寝た分はその朝の日付）。日次チェック・朝ルーティン・鍛錬・ENの1日の区切りは 3:00。'+
     '日次チェックの記号: ✓＝できた、✗＝やるつもりだったができなかった、n/3＝回数、−＝対象外（その日は予定なし・達成率の分母から除外）、未＝未記入（できなかった、ではない）。Brave はその日のデジタルウェルビーイングの値。',''];
   const hd=['日付','起床','睡眠','PN','朝RT','トイレ','YT','日次','Brave'].concat(inc?[C().title]:[]);
   L.push('| '+hd.join(' | ')+' |');
@@ -1959,6 +2194,15 @@ function mdWeek(ks,inc,title){
   const yc={};R.forEach(d=>{if(d.r.yt)yc[d.r.yt]=(yc[d.r.yt]||0)+1;});
   const yn=R.filter(d=>!d.r.yt).length;
   L.push(`- YouTube 申告: ${Object.keys(yc).length?Object.keys(yc).map(k=>ytIcon(k)+k+' '+yc[k]).join(' ／ '):'—'}（未申告 ${yn}）`);
+  if(actDefs().length){
+    L.push('- 鍛錬:');
+    actDefs().forEach(m=>{
+      const ps=ks.map(k=>actProg(m.label,k));
+      const doneDays=ps.filter(p=>p.done).length,recDays=ps.filter(p=>p.sets>0).length;
+      const totVal=ps.reduce((a,p)=>a+p.val,0);
+      L.push(`  - ${m.icon||''} ${m.label}: 達成 ${doneDays}/${ks.length}日（実施 ${recDays}日・計${totVal}回）`);
+    });
+  }
   L.push('- 日次チェック（達成 / 記録した日（対象外を除く） / 対象外 / 未記入）:');
   dItems().forEach(it=>{
     let ok=0,rec=0,na=0,no=0;const cnt=[];
@@ -2320,6 +2564,7 @@ function fillCfg(c){
   $('cTrig').value=toLines(c.trig);
   $('cTags').value=toLines(c.tags,'group');
   $('cDaily').value=toLines(c.daily,'opt');
+  $('cAct').value=toLines(c.act||DEFAULTS.act,'opt');
   $('cSteps').value=toLines(c.rt.steps,'opt');
   $('cYt').value=toLines(c.rt.yt);
   $('cIev').value=toLines(c.ievals);
@@ -2356,6 +2601,8 @@ on('cSave','click',()=>{
     trig:parsePlain($('cTrig').value),
     tags:parseIcon($('cTags').value,'group'),
     daily:parseIcon($('cDaily').value,'opt'),
+    act:parseIcon($('cAct').value,'opt'),
+    actMig:true,
     ievals:iev,
     rt:Object.assign({},rec.data.rt,{
       wake:$('cWake').value||DEFAULTS.rt.wake,
@@ -2393,6 +2640,11 @@ function forPush(i){
     o.evalText=i.eval?((evDef(i.eval).icon||'')+' '+i.eval).trim():'';
   }else if(i.kind==='phrase'){
     o.stageText=ST[stageOf(i)];
+  }else if(i.kind==='act'){
+    const p=actProg(i.label,i.dateKey);
+    o.typ=p.ty.t;o.goal=p.ty.goal;
+    o.sets=p.sets;o.total=p.val;o.done=p.done;
+    o.tapText=p.ts.map(t=>hhmm(new Date(t.t))+(p.ty.t==='rep'?'×'+t.n:'')).join(' ');
   }else if(i.kind==='report'&&i.from&&i.to){
     try{
       const ks=keysBetween(i.from,i.to),n=ks.length;
@@ -2412,6 +2664,14 @@ function merge(remote){
     if(!l){
       db.items.push(Object.assign(r,{synced:true,everSynced:true}));map[r.id]=r;
       if(r.kind==='piece') pieceChanged=true;
+    }else if(r.kind==='act'&&l.kind==='act'){
+      const u=unionTaps(l.taps,r.taps);
+      const localDiff=tapSig(u)!==tapSig(l.taps);
+      const remoteDiff=tapSig(u)!==tapSig(r.taps);
+      if((r.updatedAt||'')>(l.updatedAt||'')) Object.assign(l,r);
+      l.taps=u;l.everSynced=true;
+      if(remoteDiff){l.updatedAt=now();l.synced=false;}
+      else if(localDiff){l.synced=true;}
     }else if((r.updatedAt||'')>(l.updatedAt||'')){
       Object.assign(l,r,{synced:true,everSynced:true});
       if(r.kind==='piece') pieceChanged=true;
@@ -2453,6 +2713,7 @@ async function runSync(silent){
     }while(again&&round<3);
     render();
     if($('idlg').open) drawInbox();
+    if($('acdlg').open) drawActDlg();
     if($('ndlg').open&&!$('phdlg').open&&!$('pcdlg').open) drawEn();
     if($('rpdlg').open) drawReport();
     msg('同期しました '+new Date().toLocaleTimeString('ja-JP'));
@@ -2545,6 +2806,7 @@ if(q==='anger') openAnger(null);
 if(q==='daily') openDaily(0);
 if(q==='en') openEn();
 if(q==='report') openReport();
+if(q==='act') openAct();
 if(setupNote) msg(setupNote);
 if(shareNote) toast(shareNote+'　— 今は見ずに閉じて大丈夫です');
 else if(migNote) toast(migNote);
