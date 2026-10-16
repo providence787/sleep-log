@@ -1,6 +1,6 @@
 {
-  "name": "Sleep Log",
-  "short_name": "Sleep",
+  "name": "LIFE LOG",
+  "short_name": "LIFE LOG",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
