@@ -1,5 +1,5 @@
 /* LIFE LOG — main.js（カスタマイズ・設定・ショートカット・共有受取・起動）
-   読み込み順: core → ui → en → report → main（必ず最後）。
+   読み込み順: core → ui → en → room → report → main（必ず最後）。
    全体を即時関数で包んでいるため、ここで作る名前は他のファイルとぶつからない。
    他のファイルから呼ばれる関数はここに置かないこと。 */
 (function(){
@@ -83,6 +83,7 @@ function checkCfg(o){
   for(const it of o.daily){
     const op=it.opt||''; if(!op||/^x\d+$/.test(op)) continue;
     if(['auto:wake','auto:padlet','auto:toilet'].includes(op)) continue;
+    if(op.startsWith('auto:room:')) continue;            // 牧師ルーム（room.js が判定）
     if(op.startsWith('auto:act:')){
       const n=op.slice(9);
       if(!it.off&&!actNames.includes(n))
@@ -132,7 +133,7 @@ on('cSave','click',()=>safe('cSave',()=>{
       label:typeof actDailyLabel==='function'?actDailyLabel(m):m.label,opt:'auto:act:'+m.label}));
   }
 
-  rec.data=Object.assign({},old,{            // 既存データとマージ（知らない項目を消さない）
+  rec.data=Object.assign({},old,{            // 既存データとマージ（知らない項目＝room などを消さない）
     title:gv('cTitle').trim()||DEFAULTS.title,
     levels:o.lv,
     who:parsePlain(gv('cWho')),
@@ -249,6 +250,7 @@ safe('cmd',()=>{
   if(cmd==='anger'&&typeof openAnger==='function') openAnger(null);
   if(cmd==='daily'&&typeof openDaily==='function') openDaily(0);
   if(cmd==='en'&&typeof openEn==='function') openEn();
+  if(cmd==='room'&&typeof openRoom==='function') openRoom();
   if(cmd==='report'&&typeof openReport==='function') openReport();
 });
 if(setupNote) msg(setupNote);
@@ -260,6 +262,7 @@ safe('check',()=>{
   const miss=[];
   if(typeof render!=='function')     miss.push('ui.js');
   if(typeof drawEn!=='function')     miss.push('en.js');
+  if(typeof openRoom!=='function')   miss.push('room.js');
   if(typeof drawReport!=='function') miss.push('report.js');
   if(!miss.length) return;
   const el=$('toast'); if(!el) return;

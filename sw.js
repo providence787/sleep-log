@@ -1,9 +1,9 @@
 /* LIFE LOG — sw.js
    更新のたびに V を変えること（古いキャッシュはまとめて消える）。
-   HTML と JS はネットワーク優先（ファイルが6つに分かれたので、新旧が混ざらないように）。
+   HTML と JS はネットワーク優先（ファイルが分かれているので、新旧が混ざらないように）。
    画像・マニフェストはキャッシュ優先。res.ok かつ type==='basic' だけ保存する。 */
-const V='lifelog-2026-10-16a';
-const PRE=['./','core.js','ui.js','en.js','report.js','main.js',
+const V='lifelog-2026-10-17a';
+const PRE=['./','core.js','ui.js','en.js','room.js','report.js','main.js',
   'manifest.webmanifest','icon-192.png','icon-512.png'];
 
 self.addEventListener('install',e=>{
