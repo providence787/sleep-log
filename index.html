@@ -7,6 +7,7 @@
 <title>LIFE LOG</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#0e1117;--card:#171b24;--fg:#e8ecf3;--sub:#8b93a7;--line:#242a36;
       --sleep:#5b7cfa;--pn:#f0a132;--stop:#e2504b;--ok:#3fb950;--ang:#6d8fa8}
@@ -105,17 +106,17 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 <body>
 <header><h1 id="appTitle">LIFE LOG</h1><div class="sub" id="today"></div></header>
 
-<div class="warn" id="warn" style="display:none">この端末は同期の設定がまだです。下の「設定」に URL とトークンを入れるか、Mac で作ったセットアップリンクを開いてください。</div>
+<div class="warn" id="warn" style="display:none">⚠️ 同期設定（URL・トークン）が未入力です。下の「同期の設定」か、Mac で作ったセットアップリンクから設定してください。</div>
 <div class="toast" id="toast" style="display:none"></div>
 
 <div class="card" id="main"></div>
 
 <div class="card" id="actCard" style="display:none">
-  <div class="sub" style="margin-bottom:8px">💪 鍛錬・作業（1タップ＝1回 ／ ⏱は押して開始・もう一度で停止。目標に届くと日次チェックが自動で✓）</div>
+  <div class="sub" style="margin-bottom:8px">💪 鍛錬・作業（1タップで記録）</div>
   <div id="actBox"></div>
   <div class="row">
-    <button class="small" id="actUndo">↩ 取り消し</button>
-    <button class="small" id="actOpen">記録を見る・直す</button>
+    <button class="small" id="actUndo">↩ 直前を取り消す</button>
+    <button class="small" id="actOpen">履歴・手入力</button>
   </div>
 </div>
 
@@ -148,37 +149,37 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 <div class="card">
   <div class="row" style="align-items:center">
     <div class="sub" id="angSum" style="flex:2"></div>
-    <button class="small ang" id="btnAng" style="flex:1">記録</button>
+    <button class="small ang" id="btnAng" style="flex:1">場面を記録</button>
   </div>
 </div>
 
 <div class="card">
-  <div class="sub" style="margin-bottom:6px">履歴（直近7日・タップで修正）</div>
+  <div class="sub" style="margin-bottom:6px">直近7日</div>
   <div id="hist"></div>
 </div>
 
 <div class="sync" id="syncmsg"></div>
-<button class="small mt" id="btnSync" style="width:100%">同期（スプレッドシート）</button>
+<button class="small mt" id="btnSync" style="width:100%">今すぐ同期</button>
 
 <button class="small mt okb" id="btnCfg" style="width:100%">項目をカスタマイズ</button>
 
 <details class="mt">
-  <summary>設定</summary>
+  <summary>同期の設定</summary>
   <div class="card mt">
     <label>GAS ウェブアプリ URL（/exec）</label>
     <input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
     <label>トークン</label>
     <input id="cfgToken" autocomplete="off">
-    <button class="small" id="btnGen" style="width:100%">ランダムなトークンを作る</button>
+    <button class="small" id="btnGen" style="width:100%">トークンを自動生成</button>
     <button class="small okb mt" id="btnSave" style="width:100%">保存して同期</button>
-    <button class="small mt" id="btnLink" style="width:100%">セットアップリンクをコピー（他の端末用）</button>
+    <button class="small mt" id="btnLink" style="width:100%">📱 別端末セットアップ用リンクをコピー</button>
     <input id="linkOut" class="mt" readonly style="display:none">
     <div class="center mini mt" id="cfgMsg"></div>
   </div>
 </details>
 
 <details class="mt">
-  <summary>削除済みの記録（復元できます）</summary>
+  <summary>削除した記録（復元）</summary>
   <div class="card mt" id="trash"></div>
 </details>
 
@@ -188,20 +189,20 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div class="center mt" id="dlgDur" style="font-size:24px;font-weight:700"></div>
 
   <label>開始 <span id="dlgStartT" style="color:var(--fg);font-size:14px"></span></label>
-  <div class="row"><button class="adj" data-f="s" data-n="-60">−60</button>
-    <button class="adj" data-f="s" data-n="-10">−10</button>
-    <button class="adj" data-f="s" data-n="-1">−1</button>
-    <button class="adj" data-f="s" data-n="1">＋1</button>
-    <button class="adj" data-f="s" data-n="10">＋10</button>
-    <button class="adj" data-f="s" data-n="60">＋60</button></div>
+  <div class="row"><button class="adj" data-f="s" data-n="-60">-60</button>
+    <button class="adj" data-f="s" data-n="-10">-10</button>
+    <button class="adj" data-f="s" data-n="-1">-1</button>
+    <button class="adj" data-f="s" data-n="1">+1</button>
+    <button class="adj" data-f="s" data-n="10">+10</button>
+    <button class="adj" data-f="s" data-n="60">+60</button></div>
 
   <label>終了 <span id="dlgEndT" style="color:var(--fg);font-size:14px"></span></label>
-  <div class="row"><button class="adj" data-f="e" data-n="-60">−60</button>
-    <button class="adj" data-f="e" data-n="-10">−10</button>
-    <button class="adj" data-f="e" data-n="-1">−1</button>
-    <button class="adj" data-f="e" data-n="1">＋1</button>
-    <button class="adj" data-f="e" data-n="10">＋10</button>
-    <button class="adj" data-f="e" data-n="60">＋60</button></div>
+  <div class="row"><button class="adj" data-f="e" data-n="-60">-60</button>
+    <button class="adj" data-f="e" data-n="-10">-10</button>
+    <button class="adj" data-f="e" data-n="-1">-1</button>
+    <button class="adj" data-f="e" data-n="1">+1</button>
+    <button class="adj" data-f="e" data-n="10">+10</button>
+    <button class="adj" data-f="e" data-n="60">+60</button></div>
 
   <details class="mt"><summary>時刻を直接入力</summary>
     <div class="row mt" style="align-items:center">
@@ -209,9 +210,9 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
       <span class="mini">終了</span><input type="time" id="inE"></div>
   </details>
 
-  <label>メモ（もう一度タップで解除）</label>
+  <label>タグ</label>
   <div class="chips" id="dlgTags"></div>
-  <input id="dlgNote" class="mt" placeholder="自由メモ（任意）">
+  <input id="dlgNote" class="mt" placeholder="メモ（任意）">
 
   <button class="small mt" id="dlgUndo" style="width:100%;display:none">↩ 終了を取り消して計測中に戻す</button>
   <div class="row mt">
@@ -224,25 +225,25 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 <dialog id="adlg"><div class="pad">
   <div style="font-weight:700"><span id="aHead"></span> <span class="mini" id="aTime"></span></div>
 
-  <label>いつ（思い出して記録するときは直す）<span id="aTimeNote" style="color:#ffcf8a"></span></label>
+  <label>起きた時刻<span id="aTimeNote" style="color:#ffcf8a"></span></label>
   <div class="row" style="align-items:center">
     <button class="small seg" id="aDayT">今日</button>
     <button class="small seg" id="aDayY">昨日</button>
     <input type="time" id="aInT">
   </div>
-  <div class="row mt"><button class="adj" data-f="a" data-n="-60">−60</button>
-    <button class="adj" data-f="a" data-n="-10">−10</button>
-    <button class="adj" data-f="a" data-n="-1">−1</button>
-    <button class="adj" data-f="a" data-n="1">＋1</button>
-    <button class="adj" data-f="a" data-n="10">＋10</button>
-    <button class="adj" data-f="a" data-n="60">＋60</button></div>
+  <div class="row mt"><button class="adj" data-f="a" data-n="-60">-60</button>
+    <button class="adj" data-f="a" data-n="-10">-10</button>
+    <button class="adj" data-f="a" data-n="-1">-1</button>
+    <button class="adj" data-f="a" data-n="1">+1</button>
+    <button class="adj" data-f="a" data-n="10">+10</button>
+    <button class="adj" data-f="a" data-n="60">+60</button></div>
 
-  <label>自分の反応（必須・もう一度タップで解除）</label>
+  <label>自分の反応（もう一度タップで解除）</label>
   <div id="aLv"></div>
-  <label>相手</label><div class="chips" id="aWho"></div>
-  <label>場面（複数可）</label><div class="chips" id="aTrig"></div>
-  <input id="aNote" class="mt" placeholder="自由メモ（任意）">
-  <div class="row"><button class="small" id="aSame">前回と同じ相手・場面を入れる</button></div>
+  <label>相手（任意）</label><div class="chips" id="aWho"></div>
+  <label>場面（任意・複数可）</label><div class="chips" id="aTrig"></div>
+  <input id="aNote" class="mt" placeholder="ひとことメモ（任意）">
+  <div class="row"><button class="small" id="aSame">前回と同じ相手・場面</button></div>
   <div class="center mini mt" id="aMsg"></div>
   <div class="row mt">
     <button class="small stop" id="aDel">削除</button>
@@ -251,14 +252,14 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- 朝ルーティンの修正（即時反映） -->
+<!-- 朝ルーティン -->
 <dialog id="rdlg"><div class="pad">
-  <div style="font-weight:700">朝ルーティン <span class="mini" id="rDate"></span></div>
+  <div style="font-weight:700">🌅 朝ルーティン <span class="mini" id="rDate"></span></div>
   <div class="center mini mt" id="rStat"></div>
   <div id="rBody" class="mt"></div>
   <label>YouTube（任意・もう一度タップで解除）</label>
   <div class="chips" id="rYt"></div>
-  <input id="rNote" class="mt" placeholder="自由メモ（任意）">
+  <input id="rNote" class="mt" placeholder="メモ（任意）">
   <div class="center mini" id="rMsg"></div>
   <div class="row mt">
     <button class="small stop" id="rDel">削除</button>
@@ -267,29 +268,29 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- 鍛錬・作業の記録（タップで即時反映） -->
+<!-- 鍛錬・作業 -->
 <dialog id="acdlg"><div class="pad">
   <div style="font-weight:700">💪 鍛錬・作業の記録 <span class="mini" id="acDate"></span></div>
   <div class="row mt">
     <button class="small seg" id="acToday">今日</button>
     <button class="small seg" id="acYest">昨日</button>
   </div>
-  <div class="mini mt" style="line-height:1.5">記録をタップすると取り消せます。押し忘れた分は、時刻（と回数・分）を入れて「＋追加」。⏱の止め忘れは、取り消してから入れ直してください。</div>
+  <div class="mini mt" style="line-height:1.5">チップをタップすると取り消せます。時刻を入れて「＋追加」で後から足せます（1日の区切りは 3:00）。</div>
   <div id="acList"></div>
   <button class="small mt" id="acClose" style="width:100%">閉じる</button>
 </div></dialog>
 
-<!-- 日次チェック（タップで即時反映） -->
+<!-- 日次チェック -->
 <dialog id="ddlg"><div class="pad">
   <div style="font-weight:700">日次チェック <span class="mini" id="dDate"></span></div>
   <div class="row mt">
     <button class="small seg" id="dToday">今日</button>
     <button class="small seg" id="dYest">昨日</button>
   </div>
-  <div class="mini mt" style="line-height:1.5">✗＝やるつもりだったができなかった（達成率に含む）。− 対象外＝その日は予定がなかった（休日・体調不良など。達成率の分母から外す）。もう一度タップで解除。</div>
+  <div class="mini mt" style="line-height:1.5">もう一度タップで未記入に戻せます。自動判定の項目もタップで上書きできます（もう一度で自動に戻る）。</div>
   <div id="dList"></div>
 
-  <label>この日の Brave（デジタルウェルビーイングの今日の値）</label>
+  <label>🦁 Brave（任意・デジタルウェルビーイングの値）</label>
   <div class="row" style="align-items:center">
     <input type="number" class="num" id="dBn" inputmode="numeric" placeholder="回数">
     <span class="mini" style="flex:0 0 auto">回</span>
@@ -300,16 +301,16 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 
   <div class="center mini mt" id="dSum"></div>
-  <button class="small mt" id="dInbox" style="width:100%">📥 インボックス</button>
+  <button class="small mt" id="dInbox" style="width:100%">📥 インボックスを処理</button>
   <button class="small mt" id="dClose" style="width:100%">閉じる</button>
 </div></dialog>
 
-<!-- 情報インボックス（タップで即時反映） -->
+<!-- インボックス -->
 <dialog id="idlg"><div class="pad">
-  <div style="font-weight:700">📥 情報インボックス <span class="mini" id="iCount"></span></div>
-  <div class="mini mt">見たら自分の言葉で Obsidian に書いてから評価を付けます（もう一度タップで解除）。</div>
+  <div style="font-weight:700">📥 インボックス <span class="mini" id="iCount"></span></div>
+  <div class="mini mt">昼に放り込んだリンクやメモを、夜ここで仕分けして Obsidian へ。</div>
   <div class="row mt" style="align-items:center">
-    <input id="iAdd" class="num" placeholder="URL またはメモを追加" style="flex:3">
+    <input id="iAdd" class="num" placeholder="URL またはメモを手入力" style="flex:3">
     <button class="small" id="iAddBtn">追加</button>
   </div>
   <div id="iList" class="mt"></div>
@@ -317,14 +318,14 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <button class="small mt" id="iClose" style="width:100%">閉じる</button>
 </div></dialog>
 
-<!-- EN：言える島を広げる -->
+<!-- EN -->
 <dialog id="ndlg"><div class="pad">
-  <div style="font-weight:700">🗣 EN　言える島を広げる <span class="mini" id="nDate"></span></div>
+  <div style="font-weight:700">🗣 EN <span class="mini" id="nDate"></span></div>
 
-  <label>① 拾う：英語で言いたいこと（日英まぜてOK・音声入力で）</label>
-  <textarea id="nRaw" style="min-height:80px" placeholder="例: 3時半に起きるのは祈りの時間を確保したいから、because 夜は家族の時間だから"></textarea>
+  <label>① 言えなかったこと・言いたいこと（日本語でも英語でもOK・改行で複数まとめて登録可）</label>
+  <textarea id="nRaw" style="min-height:80px" placeholder="例: 3歳児にわかるように説明したい / because ばかり使ってしまう"></textarea>
   <div class="chips" id="nIsl"></div>
-  <button class="small en mt" id="nAdd" style="width:100%">拾う（保存）</button>
+  <button class="small en mt" id="nAdd" style="width:100%">＋ 拾う</button>
   <div class="center mini mt" id="nMsg"></div>
 
   <div class="fun" id="nFun"></div>
@@ -332,9 +333,9 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div id="nBars" class="mt"></div>
   <div class="mini" id="nAnki"></div>
 
-  <label>② 整える（Claude で添削）</label>
+  <label>② Claude で自然な英語に整える</label>
   <div class="row">
-    <button class="small" id="nCopyFix">未添削をコピー</button>
+    <button class="small" id="nCopyFix">未添削をコピー（指示文つき）</button>
     <button class="small" id="nImpOpen">返答を取り込む</button>
   </div>
   <div id="nImpBox" style="display:none" class="mt">
@@ -342,40 +343,40 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <button class="small okb" id="nImpGo" style="width:100%">取り込む</button>
   </div>
 
-  <label>③ 覚える（Anki）</label>
-  <button class="small" id="nTsv" style="width:100%">Anki 用 TSV をダウンロード</button>
+  <label>③ Anki</label>
+  <button class="small" id="nTsv" style="width:100%">Anki 用 TSV を出力（未出力のみ）</button>
 
-  <label>④ 使う ／ ⑤ 話せる</label>
+  <label>④ 使う ／ ⑤ 話す</label>
   <div class="row">
-    <button class="small" id="nWrite">✍️ 書いた</button>
-    <button class="small" id="nSpeak">🎙 話した</button>
+    <button class="small" id="nWrite">✍️ 書いたものを記録</button>
+    <button class="small" id="nSpeak">🎙 話したことを記録</button>
   </div>
-  <button class="small mt" id="nWeek" style="width:100%">📝 週次振り返りの素材をコピー（英語で書く用）</button>
+  <button class="small mt" id="nWeek" style="width:100%">📋 今週のまとめ（Claude 講評用）をコピー</button>
   <textarea id="nOut" class="mt" readonly style="display:none;min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
 
-  <details class="mt"><summary>フレーズ一覧（タップで修正）</summary>
+  <details class="mt"><summary>フレーズ一覧</summary>
     <div class="chips mt" id="nFilt"></div>
     <div id="nList"></div>
   </details>
-  <details class="mt"><summary>書いた・話した記録（タップで修正）</summary><div id="nPieces"></div></details>
+  <details class="mt"><summary>書いた・話した記録</summary><div id="nPieces"></div></details>
   <button class="small mt" id="nClose" style="width:100%">閉じる</button>
 </div></dialog>
 
-<!-- フレーズの修正（保存で確定） -->
+<!-- フレーズ編集 -->
 <dialog id="phdlg"><div class="pad">
   <div style="font-weight:700">フレーズ <span class="mini" id="phStage"></span></div>
-  <label>元メモ（日英まぜ）</label>
+  <label>元メモ（言いたかったこと）</label>
   <textarea id="phRaw" style="min-height:70px"></textarea>
-  <label>英語（添削後）</label>
+  <label>英語（自分の言葉として使う形）</label>
   <textarea id="phEn" style="min-height:70px"></textarea>
-  <label>日本語の意味（Anki の表面）</label>
+  <label>日本語（Anki の表・思い出すきっかけ）</label>
   <input id="phJa">
-  <label>メモ（言い換え・注意点）</label>
+  <label>ひとこと解説</label>
   <input id="phTip">
   <label>島</label>
   <div class="chips" id="phIsl"></div>
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg)">
-    <input type="checkbox" id="phAnki" style="width:auto;margin:0"> Anki に入れた</label>
+    <input type="checkbox" id="phAnki" style="width:auto;margin:0"> Anki に出力済み</label>
   <div class="mini" id="phUsed"></div>
   <div class="center mini mt" id="phMsg"></div>
   <div class="row mt">
@@ -385,7 +386,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- 書いた・話した（保存で確定） -->
+<!-- 書いた・話した記録 -->
 <dialog id="pcdlg"><div class="pad">
   <div style="font-weight:700" id="pcHead"></div>
   <div class="row mt">
@@ -394,17 +395,17 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
   <label>日付</label>
   <input type="date" id="pcDate">
-  <label>島（任意・選ぶとその島のフレーズだけ表示）</label>
+  <label>島</label>
   <div class="chips" id="pcIsl"></div>
   <div id="pcWBox">
-    <label>語数</label>
+    <label>語数（本文から自動計算もできます）</label>
     <div class="row" style="align-items:center">
       <input type="number" class="num" id="pcWords" inputmode="numeric" placeholder="語数">
       <button class="small" id="pcCount">本文から数える</button>
     </div>
   </div>
   <div id="pcSBox">
-    <label>話した時間・詰まり（メモなしで話す）</label>
+    <label>分数・詰まった回数・日本語に逃げた回数</label>
     <div class="row" style="align-items:center">
       <input type="number" class="num" id="pcMin" inputmode="numeric" placeholder="分">
       <span class="mini" style="flex:0 0 auto">分</span>
@@ -413,11 +414,11 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
       <input type="number" class="num" id="pcJp" inputmode="numeric" placeholder="日本語">
       <span class="mini" style="flex:0 0 auto">回</span>
     </div>
-    <div class="mini mt">詰まり＝言葉が出ずに止まった回数 ／ 日本語＝日本語に逃げた回数</div>
+    <div class="mini mt">💡 言えなかった表現は、閉じたあと①の欄から拾っておくと次に繋がります。</div>
   </div>
-  <label>使ったフレーズ（タップで選択・もう一度で解除）</label>
+  <label>今日使ったフレーズ（タップで選択）</label>
   <div class="chips" id="pcPh"></div>
-  <label>本文・メモ・録音のリンク（任意）</label>
+  <label>本文・メモ（任意）</label>
   <textarea id="pcText" style="min-height:90px"></textarea>
   <div class="center mini" id="pcMsg"></div>
   <div class="row mt">
@@ -427,28 +428,28 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- ⛪ 牧師のトレーニングルーム -->
+<!-- ⛪ 牧師ルーム -->
 <dialog id="rmdlg"><div class="pad">
   <div style="font-weight:700">⛪ 牧師のトレーニングルーム <span class="mini" id="rmDate"></span></div>
-  <div class="mini mt" style="line-height:1.5">問いを1つ引いて、⏱を押して声に出して答える。答えたら評価（✓△✗）を残す。場面を選ぶと、その場面の問いだけ出ます。</div>
+  <div class="mini mt" style="line-height:1.5">聖書を見ずに声に出して答える練習（1日1問から）</div>
   <div class="chips mt" id="rmFilt"></div>
   <div id="rmRunBox" class="mt" style="display:none">
-    <button class="small stop" id="rmResume" style="width:100%">⏱ 口述の計測中（タップで戻る）</button>
+    <button class="small stop" id="rmResume" style="width:100%">⏱ 計測中の口述に戻る</button>
   </div>
   <div class="exp mt" id="rmCard"></div>
   <div class="row mt">
-    <button class="small okb" id="rmGo" style="flex:2">🎙 この問いに答える</button>
-    <button class="small" id="rmNext">次の問い</button>
+    <button class="small okb" id="rmGo" style="flex:2">🎙 この問いで口述する</button>
+    <button class="small" id="rmNext">別の問い</button>
   </div>
   <div class="row mt">
-    <button class="small" id="rmEdit">問いを見る・直す</button>
+    <button class="small" id="rmEdit">問い・要点を見る</button>
     <button class="small" id="rmAdd">＋ 問いを足す</button>
   </div>
   <div class="fun" id="rmFun"></div>
   <div class="mini center" id="rmFunSub"></div>
-  <button class="small mt" id="rmDaily" style="width:100%;display:none">日次チェックに「口述 1問」を入れる（答えた日は自動で✓）</button>
+  <button class="small mt" id="rmDaily" style="width:100%;display:none">＋ 日次チェックに「牧師ルーム 口述1問」を入れる</button>
 
-  <label>問いの取り込み（Claude で作る）</label>
+  <label>Claude で問いを作る・取り込む</label>
   <div class="row">
     <button class="small" id="rmGen">依頼文をコピー</button>
     <button class="small" id="rmImpOpen">返答を取り込む</button>
@@ -460,33 +461,33 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
   <div class="center mini mt" id="rmMsg"></div>
 
-  <details class="mt"><summary>問いの棚（タップで修正）</summary><div id="rmShelf"></div></details>
-  <details class="mt"><summary>口述の記録（タップで修正）</summary><div id="rmRuns"></div></details>
-  <details class="mt"><summary>場面を編集</summary>
-    <div class="mini mt">1行に1つ「アイコン,場面名」。行頭に # を付けると非表示。名前を変えると過去の問いとは別の場面になります。</div>
+  <details class="mt"><summary>問いの棚</summary><div id="rmShelf"></div></details>
+  <details class="mt"><summary>口述の記録</summary><div id="rmRuns"></div></details>
+  <details class="mt"><summary>場面のカスタマイズ</summary>
+    <div class="mini mt">1行1項目（絵文字, 名前）。行頭に # で非表示。</div>
     <textarea id="rmScenes" class="mt" style="min-height:120px"></textarea>
     <button class="small okb" id="rmScSave" style="width:100%">場面を保存</button>
   </details>
   <button class="small mt" id="rmClose" style="width:100%">閉じる</button>
 </div></dialog>
 
-<!-- 問いの修正（保存で確定） -->
+<!-- 問いの編集 -->
 <dialog id="tpdlg"><div class="pad">
-  <div style="font-weight:700" id="tpHead">問い</div>
-  <label>場面（もう一度タップで解除）</label>
+  <div style="font-weight:700" id="tpHead"></div>
+  <label>場面</label>
   <div class="chips" id="tpScene"></div>
-  <label>問い（相手が口にしそうな言葉で）</label>
-  <textarea id="tpQ" style="min-height:70px" placeholder="例: 神さまがいるなら、なぜ苦しみがあるんですか"></textarea>
-  <label>鍵になるみことば</label>
-  <input id="tpV" placeholder="例: ローマ 8:28 ／ ヨハネ 11:35">
-  <label>ねらい（この問いで鍛えたいこと）</label>
+  <label>問い</label>
+  <textarea id="tpQ" style="min-height:70px" placeholder="例: 神さまがいるなら、なぜ苦しみがあるのですか"></textarea>
+  <label>みことば（書名 章:節）</label>
+  <input id="tpV" placeholder="例: ローマ 8:28 / ヨハネ 11:35">
+  <label>ねらい</label>
   <input id="tpAim" placeholder="例: 共感してから聖書に入る">
-  <label>自分の答えの要点（口述のあとで育てる）</label>
+  <label>答えの要点（自分の言葉で育てていくメモ）</label>
   <textarea id="tpAns" style="min-height:90px"></textarea>
-  <label class="ckl"><input type="checkbox" id="tpOral"> 口で言える（見ずに答えられる）</label>
-  <div id="tpHistBox"><label>この問いの口述（タップで修正）</label><div id="tpHist"></div></div>
+  <label class="ckl"><input type="checkbox" id="tpOral"> 口で言えるようになった</label>
+  <div id="tpHistBox"><label>これまでの口述</label><div id="tpHist"></div></div>
   <div class="center mini mt" id="tpMsg"></div>
-  <button class="small okb mt" id="tpGo" style="width:100%">🎙 保存してこの問いに答える</button>
+  <button class="small okb mt" id="tpGo" style="width:100%">🎙 保存してこの問いで口述する</button>
   <div class="row mt">
     <button class="small stop" id="tpDel">削除</button>
     <button class="small" id="tpCancel">キャンセル</button>
@@ -494,11 +495,11 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- 口述の記録（保存で確定） -->
+<!-- 口述の記録 -->
 <dialog id="dldlg"><div class="pad">
   <div style="font-weight:700" id="dlHead">🎙 口述</div>
   <div class="exp mt" id="dlQ"></div>
-  <details class="mt"><summary>自分の答えの要点を見る（答えたあとに）</summary>
+  <details class="mt"><summary>答えの要点を見る（答えたあとに確認）</summary>
     <div class="mini mt" id="dlAns" style="white-space:pre-wrap;line-height:1.6"></div></details>
   <div class="row mt">
     <button class="small seg" id="dl_oral">🎙 口述</button>
@@ -511,23 +512,23 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   <div id="dlSermon" style="display:none">
     <label>主題</label><input id="dlTheme">
     <label>聖書箇所</label><input id="dlText">
-    <label>要点（1行に1つ・3つ程度）</label><textarea id="dlPoints" style="min-height:80px"></textarea>
+    <label>要点（1行1つ・3つほど）</label><textarea id="dlPoints" style="min-height:80px"></textarea>
     <label>適用</label><input id="dlApply">
   </div>
-  <label>評価（必須・もう一度タップで解除）</label>
+  <label>評価（必須）</label>
   <div class="chips" id="dlMarks"></div>
-  <label>時間・詰まり</label>
+  <label>分数・詰まった回数</label>
   <div class="row" style="align-items:center">
     <input type="number" class="num" id="dlMin" inputmode="numeric" placeholder="分">
     <span class="mini" style="flex:0 0 auto">分</span>
     <input type="number" class="num" id="dlStuck" inputmode="numeric" placeholder="詰まり">
     <span class="mini" style="flex:0 0 auto">回</span>
   </div>
-  <label>使ったみことば</label>
+  <label>今日引けたみことば（任意）</label>
   <input id="dlVerse">
-  <label>ひとことメモ（うまく言えなかったこと・次に言いたいこと）</label>
+  <label>メモ・振り返り（任意）</label>
   <textarea id="dlNote" style="min-height:70px"></textarea>
-  <label>録音・Obsidian のリンク（任意）</label>
+  <label>Obsidian リンク・ノート名（任意）</label>
   <input id="dlLink" inputmode="url">
   <label>日付</label>
   <input type="date" id="dlDate">
@@ -542,7 +543,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 
 <!-- エクスポート -->
 <dialog id="edlg"><div class="pad">
-  <div style="font-weight:700">📤 エクスポート（Obsidian 用 Markdown）</div>
+  <div style="font-weight:700">📤 Obsidian 用 Markdown</div>
   <div class="row mt">
     <button class="small seg" id="e_today">今日</button>
     <button class="small seg" id="e_yest">昨日</button>
@@ -556,7 +557,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
     <input type="date" id="eTo" style="flex:1">
   </div>
   <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg)">
-    <input type="checkbox" id="eAng" style="width:auto;margin:0"> 場面ログを含める</label>
+    <input type="checkbox" id="eAng" style="width:auto;margin:0"> 場面ログも含める</label>
   <textarea id="eOut" readonly style="min-height:260px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
   <div class="center mini" id="eMsg"></div>
   <div class="row mt">
@@ -565,7 +566,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- レポート（入力は即時反映） -->
+<!-- レポート -->
 <dialog id="rpdlg"><div class="pad">
   <div style="font-weight:700">📊 レポート <span class="mini" id="rpRange"></span></div>
   <div class="row mt">
@@ -580,20 +581,20 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
   <div id="rpPrev"></div>
 
-  <label>① 数字（前期＝すぐ前の同じ長さの期間）</label>
+  <label>① 数字（今期 ／ 前期 ／ 差）</label>
   <div id="rpNums"></div>
 
-  <label>② 気づき（アプリが簡単なルールで出しています）</label>
+  <label>② 気づき（ルールベース）</label>
   <div id="rpIns"></div>
 
-  <label>③ 次の実験を1つ（一行で。次のレポートの冒頭とメイン画面に出ます）</label>
-  <input id="rpExp" placeholder="例: 21時にスマホを充電器に置く">
+  <label>③ 次の実験（1つだけ・小さく具体的に）</label>
+  <input id="rpExp" placeholder="例: 21時以降はスマホをリビングに置く">
 
-  <label>④ Claude で文章のレポートにする</label>
-  <button class="small okb" id="rpCopy" style="width:100%">Claude 用にコピー（データ＋指示文）</button>
+  <label>④ Claude で深掘り＆振り返りメモ</label>
+  <button class="small okb" id="rpCopy" style="width:100%">Claude 用プロンプトをコピー</button>
   <textarea id="rpOut" class="mt" readonly style="display:none;min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
-  <textarea id="rpMemo" class="mt" placeholder="Claude の返事（または自分の振り返り）を貼り付け"></textarea>
-  <button class="small" id="rpMemoSave" style="width:100%">振り返りメモとして保存</button>
+  <textarea id="rpMemo" class="mt" placeholder="Claude の返答や自分の振り返りメモを貼り付けて保存"></textarea>
+  <button class="small" id="rpMemoSave" style="width:100%">振り返りメモを保存</button>
   <div class="center mini mt" id="rpMemoAt"></div>
   <div class="center mini mt" id="rpMsg"></div>
 
@@ -604,62 +605,62 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
 
 <!-- カスタマイズ -->
 <dialog id="cdlg"><div class="pad">
-  <div style="font-weight:700">項目をカスタマイズ</div>
-  <div class="mini mt">1行に1項目。アイコンを付けたい行は「アイコン,ラベル」。行頭に # を付けると非表示（データは残ります）。</div>
+  <div style="font-weight:700">項目のカスタマイズ</div>
+  <div class="mini mt">1行に1項目（絵文字, 名前）。行頭に # を付けると非表示（過去の記録は消えません）。</div>
 
-  <label>このログの名前</label>
+  <label>場面ログのタイトル</label>
   <input id="cTitle" placeholder="場面ログ">
 
-  <label>自分の反応（上から順に記録されます）</label>
+  <label>自分の反応（絵文字, 名前）</label>
   <textarea id="cLevels"></textarea>
 
-  <label>相手</label>
+  <label>相手（1行1項目）</label>
   <textarea id="cWho"></textarea>
 
-  <label>場面</label>
+  <label>場面（1行1項目）</label>
   <textarea id="cTrig"></textarea>
 
-  <label>睡眠メモのタグ（3つめに wake と書いた行は排他選択）</label>
+  <label>睡眠タグ（絵文字, 名前, グループ名 ※3つめが wake なら起床時だけ聞く）</label>
   <textarea id="cTags"></textarea>
 
-  <label>日次チェック（3つめ: x3＝回数型 / auto:wake・auto:padlet・auto:toilet＝自動判定 / auto:act:メニュー名＝鍛錬・作業の目標達成で自動判定 / auto:room:口述＝牧師ルームで1問答えたら自動判定）。目安は7〜9項目、新しい項目は2週間のお試しにしてレポートで残すか決める</label>
+  <label>日次チェック（絵文字, 名前, オプション ※3つめ: x3＝回数 / auto:wake・auto:padlet・auto:toilet / auto:act:名前 / auto:room:口述）</label>
   <textarea id="cDaily"></textarea>
 
-  <label>鍛錬・作業メニュー（3つめ: tap5＝1タップ1回で1日5回 / rep20＝回数を入れて1日合計20回 / min15＝⏱開始・停止で時間を計り1日15分、min0＝目標なしで時間だけ記録）。名前を変えると過去の記録とは別のメニューになります</label>
+  <label>鍛錬・作業メニュー（絵文字, 名前, 種類 ※3つめ: tap5＝1タップ1回で目標5回 / rep20＝回数入力で目標20回 / min15＝タイマー1回で目標15分・min0は目標なし）</label>
   <textarea id="cAct" style="min-height:90px"></textarea>
 
-  <label>朝ルーティンのステップ（3つめ: wake＝起床 / toilet＝トイレ入室 / padlet＝Padlet / end＝退出・終了）</label>
+  <label>朝ルーティンのステップ（絵文字, 名前, 役割 ※3つめ: wake / toilet / padlet / end）</label>
   <textarea id="cSteps"></textarea>
 
-  <label>YouTube の申告（1つだけ選ぶ。1つめが「寄り道なし」としてレポートで使われます）</label>
+  <label>YouTube 申告の選択肢（1行目が「寄り道なし」扱い）</label>
   <textarea id="cYt" style="min-height:70px"></textarea>
 
-  <label>インボックスの評価（1つだけ選ぶ）</label>
+  <label>インボックスの評価（絵文字, 名前）</label>
   <textarea id="cIev" style="min-height:90px"></textarea>
 
-  <label>ルーティン画面のリンク（名前 / URL）</label>
-  <input id="cLinkName" placeholder="聴くClay">
+  <label>朝ルーティン内のリンク名 / URL</label>
+  <input id="cLinkName" placeholder="Clay">
   <input id="cLink" placeholder="https://..." inputmode="url">
 
-  <label>自動判定の基準</label>
+  <label>朝ルーティンの目標・目安</label>
   <div class="row" style="align-items:center">
-    <span class="mini" style="flex:0 0 auto">起床目標</span><input type="time" id="cWake">
-    <span class="mini" style="flex:0 0 auto">±</span><input type="number" class="num" id="cTol" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">目標起床</span><input type="time" id="cWake">
+    <span class="mini" style="flex:0 0 auto">許容±</span><input type="number" class="num" id="cTol" inputmode="numeric">
     <span class="mini" style="flex:0 0 auto">分</span>
   </div>
   <div class="row mt" style="align-items:center">
-    <span class="mini" style="flex:0 0 auto">トイレ滞在（入室→退出）上限</span><input type="number" class="num" id="cToilet" inputmode="numeric">
-    <span class="mini" style="flex:0 0 auto">分</span>
+    <span class="mini" style="flex:0 0 auto">トイレ目安</span><input type="number" class="num" id="cToilet" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">分以内</span>
   </div>
   <div class="row mt" style="align-items:center">
-    <span class="mini" style="flex:0 0 auto">ルーティン自動終了</span><input type="number" class="num" id="cMaxH" inputmode="numeric">
-    <span class="mini" style="flex:0 0 auto">時間</span>
+    <span class="mini" style="flex:0 0 auto">自動終了</span><input type="number" class="num" id="cMaxH" inputmode="numeric">
+    <span class="mini" style="flex:0 0 auto">時間後</span>
   </div>
 
-  <label>EN の島（自分が話す話題。名前を変えると過去のフレーズとは別の島になります）</label>
+  <label>EN の島（絵文字, 名前）</label>
   <textarea id="cIsl" style="min-height:110px"></textarea>
 
-  <div class="mini mt">牧師ルームの場面は、ルーム画面の「場面を編集」で変えられます。</div>
+  <div class="mini mt">※保存すると他の端末にも同期されます。</div>
 
   <div class="center mini mt" id="cMsg"></div>
   <div class="row mt">
@@ -669,7 +670,7 @@ label{font-size:12px;color:var(--sub);display:block;margin:10px 0 4px}
   </div>
 </div></dialog>
 
-<!-- 読み込み順を変えないこと（core → ui → en → room → report → main） -->
+<!-- core → ui → en → room → report → main -->
 <script src="core.js"></script>
 <script src="ui.js"></script>
 <script src="en.js"></script>
